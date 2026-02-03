@@ -3,8 +3,10 @@ import { updateProperty } from "@/app/actions";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-// 1. Definimos las opciones disponibles manualmente
-// (Ya que no existen en una tabla de BD)
+// 🚀 TRUCO 1: Forzamos a que esta página NUNCA use caché. 
+// Siempre buscará los datos frescos de la BD.
+export const dynamic = "force-dynamic";
+
 const AVAILABLE_AMENITIES = [
   { id: "wifi", label: "Wifi" },
   { id: "ac", label: "Aire Acondicionado" },
@@ -19,7 +21,6 @@ const AVAILABLE_AMENITIES = [
 export default async function EditarPropiedadPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  // 2. Buscamos la propiedad (SIN include, porque amenities es una columna normal aquí)
   const property = await prisma.properties.findUnique({
     where: { id: id },
   });
@@ -28,9 +29,21 @@ export default async function EditarPropiedadPage({ params }: { params: Promise<
     redirect("/");
   }
 
-  // 3. Convertimos el JSON de la BD a un array de strings usable
-  // Si es null, usamos un array vacío. Forzamos el tipo a string[]
-  const currentAmenities = (property.amenities as string[]) || [];
+  // 🚀 TRUCO 2: Limpieza de datos "Blindada"
+  // Esto arregla el problema si en la BD quedaron datos viejos con formato raro.
+  let currentAmenities: string[] = [];
+  
+  if (Array.isArray(property.amenities)) {
+    // Recorremos lo que haya en la base de datos
+    currentAmenities = property.amenities.map((item: any) => {
+      // Si por error se guardó como objeto { id: "wifi" }, sacamos el ID
+      if (typeof item === "object" && item !== null && item.id) {
+        return item.id;
+      }
+      // Si ya es texto "wifi", lo dejamos así
+      return String(item);
+    });
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-4">
@@ -48,24 +61,25 @@ export default async function EditarPropiedadPage({ params }: { params: Promise<
           <input type="hidden" name="id" value={property.id} />
           <input type="hidden" name="slug" value={property.slug || ""} />
 
-          {/* ... Inputs de Título, Dirección, Precio, Descripción ... */}
-          {/* (Pégalos tal cual los tenías antes, no cambian) */}
-          
-           <div>
+          {/* Título */}
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
-            <input name="title" defaultValue={property.title} className="w-full p-2 border border-gray-300 rounded text-black" />
+            <input name="title" type="text" defaultValue={property.title} className="w-full p-2 border border-gray-300 rounded text-black font-medium focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
-           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Precio</label>
-            <input name="price" defaultValue={property.price_per_night.toString()} className="w-full p-2 border border-gray-300 rounded text-black" />
+
+          {/* Precio */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Precio por noche (US$)</label>
+            <input name="price" type="number" defaultValue={property.price_per_night.toString()} className="w-full p-2 border border-gray-300 rounded text-black font-medium focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
+
+          {/* Descripción */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
-             <textarea name="description" defaultValue={property.description || ""} className="w-full p-2 border border-gray-300 rounded text-black" />
+            <textarea name="description" rows={3} defaultValue={property.description || ""} className="w-full p-2 border border-gray-300 rounded text-black font-medium focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
 
-
-          {/* 🔥 SECCIÓN DE COMODIDADES CORREGIDA (JSON) 🔥 */}
+          {/* COMODIDADES */}
           <div className="border-t border-b py-4 my-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">Comodidades</label>
             <div className="grid grid-cols-2 gap-2">
@@ -75,7 +89,7 @@ export default async function EditarPropiedadPage({ params }: { params: Promise<
                     type="checkbox"
                     name="amenities"
                     value={item.id}
-                    // Verificamos si el array del JSON incluye este ID
+                    // Ahora comparamos contra la lista limpia
                     defaultChecked={currentAmenities.includes(item.id)}
                     className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
                   />
@@ -85,12 +99,13 @@ export default async function EditarPropiedadPage({ params }: { params: Promise<
             </div>
           </div>
 
+          {/* Imágenes */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">URL Imagen</label>
-            <input name="imagen1" defaultValue={property.images[0] || ""} className="w-full p-2 border border-gray-300 rounded text-black" />
+            <label className="block text-sm font-medium text-gray-700 mb-1">URL de Imagen Principal</label>
+            <input name="imagen1" type="text" defaultValue={property.images[0] || ""} className="w-full p-2 border border-gray-300 rounded text-black font-medium text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
           </div>
 
-          <button type="submit" className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded">
+          <button type="submit" className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition-all shadow-md">
             Guardar Cambios 💾
           </button>
 
