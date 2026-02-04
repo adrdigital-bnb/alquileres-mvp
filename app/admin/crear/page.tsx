@@ -1,8 +1,23 @@
+"use client";
+
 import { createProperty } from '@/app/actions';
+import { CldUploadWidget } from 'next-cloudinary';
+import { useState } from 'react';
 
 export default function CreatePropertyPage() {
+  // Estado para guardar las URLs de las fotos subidas
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+
+  // Función que se ejecuta cuando Cloudinary termina de subir una foto
+  const handleUploadSuccess = (result: any) => {
+    // Verificamos que la carga fue exitosa y tenemos una URL segura
+    if (result.info && result.info.secure_url) {
+        console.log("✅ Foto subida con éxito:", result.info.secure_url);
+        setUploadedImages((prev) => [...prev, result.info.secure_url]);
+    }
+  };
+
   return (
-    // Fondo blanco con texto OSCURO para máxima legibilidad
     <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md text-gray-900">
       
       <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">
@@ -59,78 +74,76 @@ export default function CreatePropertyPage() {
           />
         </div>
 
-        {/* --- NUEVA SECCIÓN: AMENITIES (Checkboxes) --- */}
+        {/* --- SECCIÓN: AMENITIES --- */}
         <div className="space-y-4 border-t border-gray-200 pt-4 mt-6 bg-blue-50 p-4 rounded-md border border-blue-100">
            <h3 className="text-lg font-medium text-gray-900">Comodidades</h3>
-           <p className="text-xs text-gray-600 mb-2">Selecciona todo lo que incluye:</p>
-           
            <div className="grid grid-cols-2 gap-3">
-              {/* Opción 1: Wifi */}
-              <label className="flex items-center space-x-2 cursor-pointer p-2 hover:bg-white rounded transition">
-                <input type="checkbox" name="amenities" value="wifi" className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
-                <span className="text-gray-700 text-sm">📶 Wifi</span>
-              </label>
-
-              {/* Opción 2: Piscina */}
-              <label className="flex items-center space-x-2 cursor-pointer p-2 hover:bg-white rounded transition">
-                <input type="checkbox" name="amenities" value="piscina" className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
-                <span className="text-gray-700 text-sm">🏊 Piscina</span>
-              </label>
-
-              {/* Opción 3: Aire Acondicionado */}
-              <label className="flex items-center space-x-2 cursor-pointer p-2 hover:bg-white rounded transition">
-                <input type="checkbox" name="amenities" value="aire" className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
-                <span className="text-gray-700 text-sm">❄️ Aire Acond.</span>
-              </label>
-
-              {/* Opción 4: Pet Friendly */}
-              <label className="flex items-center space-x-2 cursor-pointer p-2 hover:bg-white rounded transition">
-                <input type="checkbox" name="amenities" value="mascotas" className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
-                <span className="text-gray-700 text-sm">🐶 Mascotas</span>
-              </label>
-
-               {/* Opción 5: Estacionamiento */}
-               <label className="flex items-center space-x-2 cursor-pointer p-2 hover:bg-white rounded transition">
-                <input type="checkbox" name="amenities" value="parking" className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
+             <label className="flex items-center space-x-2 cursor-pointer">
+               <input type="checkbox" name="amenities" value="wifi" className="w-4 h-4 text-blue-600 rounded" />
+               <span className="text-gray-700 text-sm">📶 Wifi</span>
+             </label>
+             <label className="flex items-center space-x-2 cursor-pointer">
+               <input type="checkbox" name="amenities" value="piscina" className="w-4 h-4 text-blue-600 rounded" />
+               <span className="text-gray-700 text-sm">🏊 Piscina</span>
+             </label>
+             <label className="flex items-center space-x-2 cursor-pointer">
+               <input type="checkbox" name="amenities" value="aire" className="w-4 h-4 text-blue-600 rounded" />
+               <span className="text-gray-700 text-sm">❄️ Aire Acond.</span>
+             </label>
+             <label className="flex items-center space-x-2 cursor-pointer">
+               <input type="checkbox" name="amenities" value="mascotas" className="w-4 h-4 text-blue-600 rounded" />
+               <span className="text-gray-700 text-sm">🐶 Mascotas</span>
+             </label>
+             <label className="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" name="amenities" value="parking" className="w-4 h-4 text-blue-600 rounded" />
                 <span className="text-gray-700 text-sm">🚗 Parking</span>
-              </label>
-
-               {/* Opción 6: Gimnasio */}
-               <label className="flex items-center space-x-2 cursor-pointer p-2 hover:bg-white rounded transition">
-                <input type="checkbox" name="amenities" value="gym" className="w-5 h-5 text-blue-600 rounded focus:ring-blue-500" />
+             </label>
+             <label className="flex items-center space-x-2 cursor-pointer">
+                <input type="checkbox" name="amenities" value="gym" className="w-4 h-4 text-blue-600 rounded" />
                 <span className="text-gray-700 text-sm">🏋️ Gimnasio</span>
-              </label>
+             </label>
            </div>
         </div>
 
-        {/* Imágenes */}
+        {/* --- SECCIÓN: IMÁGENES CLOUDINARY --- */}
         <div className="space-y-4 border-t border-gray-200 pt-4 mt-6 bg-gray-50 p-4 rounded-md">
           <h3 className="text-lg font-medium text-gray-900">Galería de Fotos</h3>
           <p className="text-xs text-gray-600 mb-2">
-            Pega aquí las URLs de las fotos.
+            Las fotos se guardan en la nube automáticamente.
           </p>
           
-          <div className="space-y-3">
-            <input
-              type="url"
-              name="imagen1"
-              placeholder="URL Foto Principal"
-              className="w-full border border-gray-300 rounded p-2 text-sm text-gray-900 placeholder:text-gray-500 bg-white"
-              required 
-            />
-            <input
-              type="url"
-              name="imagen2"
-              placeholder="URL Foto 2 (Opcional)"
-              className="w-full border border-gray-300 rounded p-2 text-sm text-gray-900 placeholder:text-gray-500 bg-white"
-            />
-            <input
-              type="url"
-              name="imagen3"
-              placeholder="URL Foto 3 (Opcional)"
-              className="w-full border border-gray-300 rounded p-2 text-sm text-gray-900 placeholder:text-gray-500 bg-white"
-            />
+          {/* Widget de Cloudinary */}
+          <CldUploadWidget 
+            uploadPreset="alquileres_cloud" 
+            onSuccess={handleUploadSuccess}
+          >
+            {({ open }) => {
+              return (
+                <button 
+                  type="button" 
+                  onClick={() => open()}
+                  className="bg-gray-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-700 transition w-full mb-4"
+                >
+                  📸 Subir Nueva Foto
+                </button>
+              );
+            }}
+          </CldUploadWidget>
+
+          {/* Previsualización */}
+          <div className="grid grid-cols-3 gap-2">
+            {uploadedImages.map((url, index) => (
+              <div key={index} className="relative aspect-square">
+                <img src={url} alt="Uploaded" className="object-cover w-full h-full rounded border border-gray-300" />
+              </div>
+            ))}
           </div>
+
+          {/* Inputs ocultos (Esenciales para enviar datos a la BD) */}
+          <input type="hidden" name="imagen1" value={uploadedImages[0] || ""} />
+          <input type="hidden" name="imagen2" value={uploadedImages[1] || ""} />
+          <input type="hidden" name="imagen3" value={uploadedImages[2] || ""} />
+          
         </div>
 
         <button
