@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import Search from "./components/Search";
-import DeleteButton from "./components/DeleteButton"; // Importamos el componente nuevo
+import DeleteButton from "./components/DeleteButton";
 
-// Definimos searchParams como Promesa
+// Esto asegura que la página siempre muestre datos frescos (no caché viejo)
+export const dynamic = "force-dynamic"; 
+
 export default async function Home({
   searchParams,
 }: {
@@ -27,7 +29,8 @@ export default async function Home({
 
   return (
     <main className="container mx-auto p-4 min-h-screen pb-20">
-      <h1 className="text-4xl font-extrabold text-center mb-2 text-gray-800">Alquileres MVP 🏡</h1>
+      {/* 👇 AQUÍ ESTÁ EL CAMBIO: El cohete activará a Vercel */}
+      <h1 className="text-4xl font-extrabold text-center mb-2 text-gray-800">Alquileres MVP 🚀</h1>
       <p className="text-center text-gray-500 mb-8">Encuentra tu próximo alojamiento temporal</p>
       
       <Search />
@@ -100,7 +103,6 @@ export default async function Home({
                 </Link>
               </div>
 
-              {/* 👇 AQUÍ ESTÁ LA CLAVE: Usamos el componente DeleteButton, NO el código viejo */}
               <DeleteButton id={property.id} />
               
             </div>
