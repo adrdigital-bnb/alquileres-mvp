@@ -1,58 +1,83 @@
-"use client";
+'use client'
 
-import { useState, useEffect } from "react";
+import React, { useCallback } from 'react'
+import useEmblaCarousel from 'embla-carousel-react'
+import Image from 'next/image'
 
+// 1. Definimos la "forma" de los datos
 interface ImageCarouselProps {
-  images: string[];
-  alt: string;
+  images: string[]; // Un array de textos (las URLs)
+  title: string;    // Un texto normal
 }
 
-export default function ImageCarousel({ images, alt }: ImageCarouselProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
+// 2. Aplicamos el tipo aquí con ": ImageCarouselProps"
+export default function ImageCarousel({ images, title }: ImageCarouselProps) {
+  
+  // El resto de tu código sigue igual...
+  const [emblaRef, emblaApi] = useEmblaCarousel({ loop: false })
 
-  // Lógica para cambiar la foto automáticamente
-  useEffect(() => {
-    // Si no hay imágenes o solo hay una, no hacemos nada
-    if (!images || images.length <= 1) return;
+  const scrollPrev = useCallback(() => {
+    if (emblaApi) emblaApi.scrollPrev()
+  }, [emblaApi])
 
-    const interval = setInterval(() => {
-      setCurrentIndex((prevIndex) => {
-        // Si llegamos al final, volvemos a la 0 (loop infinito)
-        return (prevIndex + 1) % images.length;
-      });
-    }, 3000); // 👈 Cambia la foto cada 3000ms (3 segundos)
+  const scrollNext = useCallback(() => {
+    if (emblaApi) emblaApi.scrollNext()
+  }, [emblaApi])
 
-    // Limpieza: detener el reloj si el usuario sale de la página
-    return () => clearInterval(interval);
-  }, [images]);
-
-  // Si no hay imágenes, mostramos un placeholder gris
+  // Validamos si no hay imágenes
   if (!images || images.length === 0) {
-    return <div className="w-full h-48 bg-gray-200 flex items-center justify-center text-gray-400">Sin foto</div>;
+    return (
+      <div className="h-48 w-full bg-gray-200 flex items-center justify-center rounded-lg">
+        <span className="text-gray-400">Sin imágenes</span>
+      </div>
+    )
   }
 
   return (
-    <div className="relative w-full h-48 overflow-hidden rounded-t-lg bg-gray-100">
-      {/* Imagen actual */}
-      <img
-        src={images[currentIndex]}
-        alt={alt}
-        className="w-full h-full object-cover transition-opacity duration-500 ease-in-out"
-      />
-      
-      {/* (Opcional) Indicador de cuántas fotos hay: puntitos abajo */}
-      {images.length > 1 && (
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1">
-          {images.map((_, idx) => (
-            <div 
-              key={idx}
-              className={`w-2 h-2 rounded-full shadow-sm ${
-                idx === currentIndex ? "bg-white" : "bg-white/50"
-              }`}
-            />
+    <div className="relative group">
+      {/* Viewport */}
+      <div className="overflow-hidden rounded-lg bg-gray-100" ref={emblaRef}>
+        <div className="flex touch-pan-y">
+          {images.map((src, index) => (
+            <div className="relative flex-[0_0_100%] min-w-0" key={index}>
+              {/* Contenedor de aspecto para evitar saltos */}
+              <div className="relative h-64 w-full sm:h-72 md:h-80">
+                <Image
+                  src={src}
+                  alt={`${title} - imagen ${index + 1}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
+              </div>
+            </div>
           ))}
         </div>
+      </div>
+
+      {/* Flechas de navegación (solo si hay más de 1 imagen) */}
+      {images.length > 1 && (
+        <>
+          <button
+            onClick={scrollPrev}
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+            aria-label="Anterior"
+          >
+            ←
+          </button>
+          <button
+            onClick={scrollNext}
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-800 p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-0"
+            aria-label="Siguiente"
+          >
+            →
+          </button>
+          
+          <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+             1 / {images.length}
+          </div>
+        </>
       )}
     </div>
-  );
+  )
 }

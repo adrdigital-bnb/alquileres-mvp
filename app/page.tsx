@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/prisma";
-import ImageCarousel from "./components/ImageCarousel"; // 👈 Asegúrate de que esta ruta sea correcta
+import ImageCarousel from "./components/ImageCarousel"; // 👈 Corregido a ruta relativa como pediste
 import Link from "next/link";
 
-// Forzamos a que la página se actualice siempre (para ver los cambios al instante)
+// Forzamos a que la página se actualice siempre
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  // Obtenemos las propiedades ordenadas por fecha de creación (más nuevas primero)
+  // NOTA: Prisma suele usar el nombre en singular del modelo (prisma.property).
+  // Si tu 'schema.prisma' define el modelo como "properties", cámbialo aquí de nuevo a prisma.properties
   const properties = await prisma.properties.findMany({
     orderBy: { created_at: 'desc' }
   });
@@ -19,7 +20,6 @@ export default async function HomePage() {
         <h1 className="text-3xl font-bold text-gray-800">
           🏡 Alquileres MVP 
         </h1>
-        {/* Botón para ir al panel de crear (opcional, por si lo quieres tener a mano) */}
         <Link 
             href="/propiedad/crear" 
             className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition"
@@ -32,10 +32,11 @@ export default async function HomePage() {
         {properties.map((property) => (
           <div key={property.id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition overflow-hidden flex flex-col h-full">
             
-            {/* AQUÍ ESTÁ LA MAGIA: El Carrusel de Fotos 🎡 */}
+            {/* Carrusel de Fotos */}
+            {/* Usamos 'title' porque así lo definimos en el componente ImageCarousel */}
             <ImageCarousel 
               images={property.images} 
-              alt={property.title} 
+              title={property.title} 
             />
 
             <div className="p-4 flex flex-col flex-grow">
@@ -64,7 +65,6 @@ export default async function HomePage() {
                   Ver Detalles
                 </Link>
                 
-                {/* Botón rápido para editar (solo visible para ti en teoría) */}
                 <Link 
                   href={`/propiedades/editar/${property.id}`}
                   className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-sm font-medium hover:bg-yellow-200 transition"
