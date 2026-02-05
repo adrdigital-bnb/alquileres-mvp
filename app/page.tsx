@@ -46,7 +46,7 @@ export default async function HomePage() {
                     {property.title}
                 </h2>
                 <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-                    ${property.price_per_night}
+                  ${property.price_per_night.toString()}
                 </span>
               </div>
 
