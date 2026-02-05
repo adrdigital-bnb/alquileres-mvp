@@ -17,7 +17,7 @@ export default async function HomePage() {
       {/* Encabezado */}
       <div className="max-w-6xl mx-auto flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-800">
-          🏡 Alquileres Disponibles
+          🏡 Alquileres MVP 
         </h1>
         {/* Botón para ir al panel de crear (opcional, por si lo quieres tener a mano) */}
         <Link 
