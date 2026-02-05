@@ -54,9 +54,9 @@ export default async function PropertyDetailPage({ params }: { params: { slug: s
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
                 {property.title}
               </h1>
-              <p className="text-gray-500 text-lg flex items-center gap-1">
-                📍 {property.location || "Ubicación no especificada"}
-              </p>
+           <p className="text-gray-500 text-lg flex items-center gap-1">
+  📍 {property.zip_code ? `Código Postal: ${property.zip_code}` : "Ubicación por consultar"}
+</p>
             </div>
             <div className="text-right">
               <span className="block text-3xl font-bold text-green-600">
