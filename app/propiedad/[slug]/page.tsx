@@ -1,138 +1,122 @@
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+import ImageCarousel from "../../components/ImageCarousel";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 
-// Diccionario de iconos (opcional, para que se vea lindo)
-const amenityIcons: Record<string, string> = {
-  wifi: "📶 Wifi Alta Velocidad",
+// Forzamos dinamismo para ver cambios al instante
+export const dynamic = "force-dynamic";
+
+// Mapa de íconos para las comodidades (puedes agregar más aquí)
+const amenityIcons: { [key: string]: string } = {
+  wifi: "📶 Wifi",
   piscina: "🏊 Piscina",
-  aire: "❄️ Aire Acondicionado",
-  cocina: "🍳 Cocina Equipada",
-  estacionamiento: "🚗 Estacionamiento Gratis",
-  tv: "📺 Smart TV",
-  mascotas: "🐶 Apto Mascotas",
+  aire_acondicionado: "❄️ Aire Acondicionado",
+  cocina: "🍳 Cocina",
+  estacionamiento: "🚗 Estacionamiento",
+  tv: "📺 TV",
+  lavadora: "🧺 Lavadora",
+  // Si la comodidad no está aquí, saldrá un ícono genérico
 };
 
-export default async function PropiedadPage({ params }: { params: Promise<{ slug: string }> }) {
-  // 1. OBTENEMOS EL SLUG (No el ID)
-  const { slug } = await params;
-  
-  // 2. Decodificamos por si tiene espacios o tildes
-  const slugDecoded = decodeURIComponent(slug);
-
-  // 3. BUSCAMOS POR SLUG EN LA BASE DE DATOS
+export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
   const property = await prisma.properties.findUnique({
-    where: {
-      slug: slugDecoded, // 👈 AQUÍ ESTABA EL ERROR (antes decía id: id)
-    },
+    where: { slug: params.slug },
   });
 
-  // Si no existe, error 404
   if (!property) {
-    return notFound();
+    notFound();
   }
 
-  // Link de WhatsApp
-  const mensajeWhatsapp = `Hola, estoy interesado en reservar "${property.title}" que vi en AlquileresMVP.`;
-  const linkWhatsapp = `https://wa.me/5491112345678?text=${encodeURIComponent(mensajeWhatsapp)}`;
+  // Convertimos comodidades: si es null, array vacío. Si es string, lo parseamos.
+  let amenitiesList: string[] = [];
+  if (Array.isArray(property.amenities)) {
+    amenitiesList = property.amenities as string[];
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
-      
-      {/* IMAGEN PRINCIPAL */}
-      <div className="w-full h-[60vh] relative bg-gray-200">
-        {property.images[0] ? (
-          <img
-            src={property.images[0]}
-            alt={property.title}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            Sin imagen
-          </div>
-        )}
-      </div>
+    <main className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+        
+        {/* 1. SECCIÓN CARRUSEL (Ahora más grande) */}
+        <div className="h-[300px] md:h-[500px] w-full relative bg-gray-200">
+           <ImageCarousel 
+              images={property.images} 
+              title={property.title} 
+            />
+        </div>
 
-      <div className="max-w-4xl mx-auto -mt-20 relative z-10 p-6">
-        <div className="bg-white rounded-xl shadow-xl p-8">
+        {/* 2. CONTENIDO PRINCIPAL */}
+        <div className="p-6 md:p-8">
           
-          {/* TÍTULO Y BOTÓN EDITAR */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+          {/* Encabezado: Título y Precio */}
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">{property.title}</h1>
-              <p className="text-gray-500 mt-1 flex items-center gap-1">
-                📍 {property.address}
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+                {property.title}
+              </h1>
+              <p className="text-gray-500 text-lg flex items-center gap-1">
+                📍 {property.location || "Ubicación no especificada"}
               </p>
             </div>
-
-            <Link 
-              href={`/propiedades/editar/${property.id}`}
-              className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-2 rounded-lg transition-colors border border-gray-200"
-            >
-              ✏️ Editar
-            </Link>
+            <div className="text-right">
+              <span className="block text-3xl font-bold text-green-600">
+                ${property.price_per_night.toString()}
+              </span>
+              <span className="text-gray-500 text-sm">/ noche</span>
+            </div>
           </div>
 
           <hr className="my-6 border-gray-100" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* DESCRIPCIÓN Y AMENITIES */}
-            <div className="md:col-span-2 space-y-6">
-              <div>
-                <h2 className="text-xl font-semibold mb-3">Sobre este lugar</h2>
-                <p className="text-gray-600 leading-relaxed whitespace-pre-line">
-                  {property.description}
-                </p>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Lo que ofrece este lugar</h3>
-                <div className="grid grid-cols-2 gap-3">
-          {/* PARCHE: Forzamos a que lo trate como lista (any[]) */}
-              {Array.isArray(property.amenities) && (property.amenities as any[]).length > 0 ? (
-                (property.amenities as any[]).map((item: any) => (
-                  <div key={item} className="text-gray-600 flex items-center gap-2">
-                    {amenityIcons[item] || item}
-                  </div>
-                ))
-              ) : (
-                <p className="text-gray-400 italic">No se especificaron comodidades.</p>
-              )}
-                  )
-                </div>
-              </div>
-            </div>
-
-            {/* PRECIO Y RESERVA */}
-            <div className="md:col-span-1">
-              <div className="border border-gray-200 rounded-xl p-6 sticky top-24 shadow-sm">
-                <div className="flex justify-between items-end mb-4">
-                  <div>
-                    <span className="text-2xl font-bold">${property.price_per_night.toString()}</span>
-                    <span className="text-gray-500"> / noche</span>
-                  </div>
-                </div>
-
-                <a
-                  href={linkWhatsapp}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block w-full bg-green-600 hover:bg-green-700 text-white text-center font-bold py-3 rounded-lg transition-all shadow-md hover:shadow-lg mb-3"
-                >
-                  Reservar por WhatsApp 💬
-                </a>
-
-                <p className="text-center text-xs text-gray-400">
-                  No se te cobrará nada todavía.
-                </p>
-              </div>
-            </div>
-
+          {/* Descripción */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-3 text-gray-800">Sobre este lugar</h2>
+            <p className="text-gray-600 leading-relaxed whitespace-pre-line">
+              {property.description}
+            </p>
           </div>
+
+          {/* 3. COMODIDADES CON ÍCONOS (El Bonus) */}
+          <div className="mb-8">
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">Lo que ofrece este lugar</h2>
+            
+            {amenitiesList.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {amenitiesList.map((amenity, index) => (
+                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <span className="text-xl">
+                      {/* Usamos el mapa de íconos, o uno genérico si no existe */}
+                      {amenityIcons[amenity.toLowerCase().replace(/\s/g, '_')] || "✨ " + amenity}
+                    </span>
+                    <span className="text-gray-700 capitalize">
+                      {/* Si usamos el mapa mostramos solo el texto limpio, si no, el original */}
+                      {amenityIcons[amenity.toLowerCase().replace(/\s/g, '_')] 
+                        ? amenityIcons[amenity.toLowerCase().replace(/\s/g, '_')].split(" ").slice(1).join(" ") 
+                        : amenity}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-400 italic">No se han especificado comodidades.</p>
+            )}
+          </div>
+
+          {/* Botones de acción (Reservar / Volver) */}
+          <div className="flex flex-col sm:flex-row gap-4 mt-8 pt-8 border-t">
+            <button className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-bold text-lg hover:bg-green-700 transition shadow-md">
+              📅 Reservar ahora
+            </button>
+            <Link 
+              href="/" 
+              className="flex-none text-center bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition"
+            >
+              ← Volver al inicio
+            </Link>
+          </div>
+
         </div>
       </div>
-    </div>
+    </main>
   );
 }
