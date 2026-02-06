@@ -3,10 +3,8 @@ import ImageCarousel from "../../components/ImageCarousel";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-// Forzamos dinamismo para ver cambios al instante
 export const dynamic = "force-dynamic";
 
-// Mapa de íconos para las comodidades (puedes agregar más aquí)
 const amenityIcons: { [key: string]: string } = {
   wifi: "📶 Wifi",
   piscina: "🏊 Piscina",
@@ -15,106 +13,147 @@ const amenityIcons: { [key: string]: string } = {
   estacionamiento: "🚗 Estacionamiento",
   tv: "📺 TV",
   lavadora: "🧺 Lavadora",
-  // Si la comodidad no está aquí, saldrá un ícono genérico
+  mascotas: "🐾 Mascotas permitidas",
+  ca: "❄️ Aire Acondicionado",
 };
 
-export default async function PropertyDetailPage({ params }: { params: { slug: string } }) {
+interface PageProps {
+  params: { slug: string };
+}
+
+export default async function PropertyDetailPage({ params }: PageProps) {
+  const { slug } = await params;
+
+  // Buscamos por ID usando el slug de la URL
   const property = await prisma.properties.findUnique({
-    where: { slug: params.slug },
+    where: { id: slug },
   });
 
   if (!property) {
-    notFound();
+    return notFound();
   }
 
-  // Convertimos comodidades: si es null, array vacío. Si es string, lo parseamos.
   let amenitiesList: string[] = [];
   if (Array.isArray(property.amenities)) {
     amenitiesList = property.amenities as string[];
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto bg-white rounded-xl shadow-lg overflow-hidden">
+    // 1. FONDO MÁS OSCURO (bg-gray-100) para contraste general
+    <main className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6">
+      
+      {/* 2. TARJETA PRINCIPAL (Bordes redondeados y sombra) */}
+      <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
         
-        {/* 1. SECCIÓN CARRUSEL (Ahora más grande) */}
-        <div className="h-[300px] md:h-[500px] w-full relative bg-gray-200">
+        {/* Contenedor del carrusel con fondo gris suave */}
+        <div className="h-[350px] md:h-[550px] w-full relative bg-gray-200">
+           {/* CORRECCIÓN FINAL:
+              Agregamos fit="contain". 
+              Esto le dice al carrusel: "Muestra la foto entera, no la recortes".
+           */}
            <ImageCarousel 
-              images={property.images} 
-              title={property.title} 
-            />
+             images={property.images} 
+             title={property.title} 
+             fit="contain" 
+           />
         </div>
 
-        {/* 2. CONTENIDO PRINCIPAL */}
-        <div className="p-6 md:p-8">
+        {/* CONTENIDO PRINCIPAL */}
+        <div className="p-6 md:p-10">
           
           {/* Encabezado: Título y Precio */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+          <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
+            <div className="flex-1">
+              <h1 className="text-3xl md:text-5xl font-extrabold text-gray-900 leading-tight mb-4">
                 {property.title}
               </h1>
-           <p className="text-gray-500 text-lg flex items-center gap-1">
-  📍 {property.zip_code ? `Código Postal: ${property.zip_code}` : "Ubicación por consultar"}
-</p>
+              
+              {/* Barra de detalles rápidos (Chips) */}
+              <div className="flex flex-wrap gap-3">
+                <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-semibold">
+                   📍 {property.zip_code ? `CP: ${property.zip_code}` : "Ubicación privada"}
+                </span>
+                <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-semibold">
+                   🏠 Tipo: Alojamiento entero
+                </span>
+                <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-semibold">
+                   👤 Anfitrión verificado
+                </span>
+              </div>
             </div>
-            <div className="text-right">
-              <span className="block text-3xl font-bold text-green-600">
+
+            {/* Precio Destacado */}
+            <div className="bg-green-50 p-5 rounded-xl border border-green-100 shadow-sm flex-shrink-0 text-center md:text-right">
+              <span className="block text-4xl font-extrabold text-green-700">
                 ${property.price_per_night.toString()}
               </span>
-              <span className="text-gray-500 text-sm">/ noche</span>
+              <span className="text-green-800 font-medium">ARS / noche</span>
             </div>
           </div>
 
-          <hr className="my-6 border-gray-100" />
+          <hr className="my-8 border-gray-200" />
 
-          {/* Descripción */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-3 text-gray-800">Sobre este lugar</h2>
-            <p className="text-gray-600 leading-relaxed whitespace-pre-line">
-              {property.description}
-            </p>
-          </div>
-
-          {/* 3. COMODIDADES CON ÍCONOS (El Bonus) */}
-          <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">Lo que ofrece este lugar</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
             
-            {amenitiesList.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {amenitiesList.map((amenity, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
-                    <span className="text-xl">
-                      {/* Usamos el mapa de íconos, o uno genérico si no existe */}
-                      {amenityIcons[amenity.toLowerCase().replace(/\s/g, '_')] || "✨ " + amenity}
-                    </span>
-                    <span className="text-gray-700 capitalize">
-                      {/* Si usamos el mapa mostramos solo el texto limpio, si no, el original */}
-                      {amenityIcons[amenity.toLowerCase().replace(/\s/g, '_')] 
-                        ? amenityIcons[amenity.toLowerCase().replace(/\s/g, '_')].split(" ").slice(1).join(" ") 
-                        : amenity}
-                    </span>
-                  </div>
-                ))}
+            {/* Columna Izquierda: Descripción y Amenities */}
+            <div className="lg:col-span-2 flex flex-col gap-10">
+               
+               {/* Descripción */}
+               <div>
+                <h2 className="text-2xl font-bold mb-4 text-gray-900">Sobre este lugar</h2>
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line text-lg">
+                  {property.description || "El anfitrión no ha proporcionado una descripción detallada."}
+                </p>
               </div>
-            ) : (
-              <p className="text-gray-400 italic">No se han especificado comodidades.</p>
-            )}
-          </div>
 
-          {/* Botones de acción (Reservar / Volver) */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-8 pt-8 border-t">
-            <button className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg font-bold text-lg hover:bg-green-700 transition shadow-md">
-              📅 Reservar ahora
-            </button>
-            <Link 
-              href="/" 
-              className="flex-none text-center bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition"
-            >
-              ← Volver al inicio
-            </Link>
-          </div>
+              {/* Amenities */}
+              <div>
+                <h2 className="text-2xl font-bold mb-6 text-gray-900 flex items-center gap-2">
+                  ✨ Lo que ofrece este lugar
+                </h2>
+                {amenitiesList.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    {amenitiesList.map((amenity, index) => (
+                      <div key={index} className="flex items-center gap-4 p-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <span className="text-3xl p-2 bg-gray-50 rounded-lg">
+                          {amenityIcons[amenity.toLowerCase().replace(/\s/g, '_')] || "✔️"}
+                        </span>
+                        <span className="text-gray-800 font-bold capitalize text-lg">
+                          {amenity}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 italic bg-gray-50 p-4 rounded-lg border">
+                    No se han especificado comodidades.
+                  </p>
+                )}
+              </div>
+            </div>
 
+            {/* Columna Derecha: Tarjeta de Reserva Sticky */}
+            <div className="lg:col-span-1">
+               <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 sticky top-8">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">Resumen de reserva</h3>
+                  <p className="text-gray-500 mb-6">Selecciona tus fechas para ver el precio final.</p>
+                  
+                  <div className="flex flex-col gap-3">
+                    <button className="w-full bg-green-600 text-white py-4 px-6 rounded-lg font-bold text-xl hover:bg-green-700 transition shadow-md hover:shadow-lg flex items-center justify-center gap-2">
+                      📅 Solicitar Reserva
+                    </button>
+                    <Link 
+                      href="/" 
+                      className="w-full text-center text-gray-600 py-3 px-6 rounded-lg font-medium hover:bg-gray-100 border border-transparent hover:border-gray-200 transition"
+                    >
+                      Volver al inicio
+                    </Link>
+                  </div>
+                  <p className="text-center text-xs text-gray-400 mt-4">No se te cobrará nada todavía.</p>
+               </div>
+            </div>
+
+          </div>
         </div>
       </div>
     </main>

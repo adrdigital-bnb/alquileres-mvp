@@ -1,13 +1,11 @@
 import { prisma } from "@/lib/prisma";
-import ImageCarousel from "./components/ImageCarousel"; // 👈 Corregido a ruta relativa como pediste
+import ImageCarousel from "./components/ImageCarousel"; 
 import Link from "next/link";
 
 // Forzamos a que la página se actualice siempre
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  // NOTA: Prisma suele usar el nombre en singular del modelo (prisma.property).
-  // Si tu 'schema.prisma' define el modelo como "properties", cámbialo aquí de nuevo a prisma.properties
   const properties = await prisma.properties.findMany({
     orderBy: { created_at: 'desc' }
   });
@@ -32,12 +30,17 @@ export default async function HomePage() {
         {properties.map((property) => (
           <div key={property.id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition overflow-hidden flex flex-col h-full">
             
-            {/* Carrusel de Fotos */}
-            {/* Usamos 'title' porque así lo definimos en el componente ImageCarousel */}
-            <ImageCarousel 
-              images={property.images} 
-              title={property.title} 
-            />
+            {/* CORRECCIÓN IMPORTANTE:
+               1. Envolvemos el carrusel en un div con altura fija (h-72).
+               2. Pasamos fit="cover" para que recorte la imagen y llene la tarjeta.
+            */}
+            <div className="h-72 w-full relative border-b border-gray-100">
+                <ImageCarousel 
+                  images={property.images} 
+                  title={property.title}
+                  fit="cover" 
+                />
+            </div>
 
             <div className="p-4 flex flex-col flex-grow">
               
@@ -59,7 +62,7 @@ export default async function HomePage() {
               {/* Botones de acción */}
               <div className="mt-auto flex gap-2">
                 <Link 
-                  href={`/propiedad/${property.slug}`}
+                  href={`/propiedad/${property.id}`}
                   className="flex-1 bg-gray-900 text-white text-center py-2 rounded text-sm font-medium hover:bg-gray-700 transition"
                 >
                   Ver Detalles
