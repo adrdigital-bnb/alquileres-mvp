@@ -36,7 +36,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
   }
 
   // 2. Seguridad: Verificamos si eres el dueño
-  const { userId } = auth();
+  const { userId } = await auth();
   const isOwner = userId && property.owner_id === userId;
 
   let amenitiesList: string[] = [];
