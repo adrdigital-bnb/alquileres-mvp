@@ -1,12 +1,9 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-// 👇 TRUCO TÉCNICO:
-// 1. El primer argumento `(auth, req) => {}` es una función vacía para que TypeScript no se queje.
-// 2. El segundo argumento `{ ... }` inyecta las claves explícitamente leyendo de Vercel.
-export default clerkMiddleware((auth, req) => {}, {
-  publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-  secretKey: process.env.CLERK_SECRET_KEY,
-});
+// 👇 Dejamos esto VACÍO.
+// Al no pasar argumentos, se arregla el error de TypeScript (pantalla roja).
+// Clerk leerá tu Secret Key automáticamente desde las variables de Vercel.
+export default clerkMiddleware();
 
 export const config = {
   matcher: [

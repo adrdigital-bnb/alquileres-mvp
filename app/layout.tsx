@@ -7,9 +7,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    // 👇 SOLUCIÓN: Pasamos la variable de entorno explícitamente.
-    // NO borres "process.env.NEXT_PUBLIC...", Vercel lo reemplazará por tu clave real.
-    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
+    // 👇 AQUÍ ESTÁ LA SOLUCIÓN:
+    // Pega tu clave pk_test_... REAL entre comillas.
+    // Esto garantiza que el Build no falle nunca más por "Missing key".
+    <ClerkProvider publishableKey="pk_test_AQUI_PEGA_TU_CODIGO_LARGO_QUE_EMPIEZA_CON_PK_TEST">
       <html lang="es">
         <body>
           <header className="p-4 border-b flex justify-between items-center">
