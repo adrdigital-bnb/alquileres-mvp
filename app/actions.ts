@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server'; // 👈 1. Importamos la autenticación
 
 // --- 1. FUNCIÓN PARA CREAR (CREATE) ---
-export async function updateProperty(formData: FormData) {
+export async function createProperty(formData: FormData) {
   const { userId } = await auth(); // <--- Agregale el await aquí también
   // ...
 
