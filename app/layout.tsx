@@ -8,7 +8,7 @@ export default function RootLayout({
 }) {
   return (
     // 👇 CORRECCIÓN: Agregamos publishableKey aquí para conectar con Vercel
-    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider publishableKey="pk_test_cHJvcGVyLXN0dWQtMjQuY2xlcmsuYWNjb3VudHMuZGV2JA">
       <html lang="es">
         <body>
           {/* Barra de navegación temporal para probar el Login */}
