@@ -1,95 +1,156 @@
-import { prisma } from "@/lib/prisma";
-import ImageCarousel from "./components/ImageCarousel"; 
-import Link from "next/link";
+import { prisma } from '@/lib/prisma';
+import ImageCarousel from '@/app/components/ImageCarousel'; 
+import Link from 'next/link';
+import { auth } from '@clerk/nextjs/server';
+import { SignInButton, UserButton, SignedIn, SignedOut } from '@clerk/nextjs'; // 👈 Importamos SignedIn/SignedOut
+import DeleteButton from '@/app/components/DeleteButton';   
 
-// Forzamos a que la página se actualice siempre
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
+export default async function Home() {
   const properties = await prisma.properties.findMany({
-    orderBy: { created_at: 'desc' }
+    orderBy: { created_at: 'desc' },
   });
 
+  const { userId } = auth();
+
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
       
-      {/* Encabezado */}
-      <div className="max-w-6xl mx-auto flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-800">
-          🏡 Alquileres MVP 
-        </h1>
-        <Link 
-            href="/propiedad/crear" 
-            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition"
-        >
-            + Publicar
-        </Link>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-        {properties.map((property) => (
-          <div key={property.id} className="bg-white rounded-lg shadow-md hover:shadow-xl transition overflow-hidden flex flex-col h-full">
-            
-            {/* CORRECCIÓN IMPORTANTE:
-               1. Envolvemos el carrusel en un div con altura fija (h-72).
-               2. Pasamos fit="cover" para que recorte la imagen y llene la tarjeta.
-            */}
-            <div className="h-72 w-full relative border-b border-gray-100">
-                <ImageCarousel 
-                  images={property.images} 
-                  title={property.title}
-                  fit="cover" 
-                />
+      {/* --- CABECERA --- */}
+      <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="bg-rose-500 text-white p-1.5 rounded-lg transform group-hover:rotate-12 transition-transform">
+              🏠
             </div>
+            <span className="text-xl font-bold tracking-tight text-gray-800">
+              Alquileres MVP
+            </span>
+          </Link>
 
-            <div className="p-4 flex flex-col flex-grow">
-              
-              {/* Título y Precio */}
-              <div className="flex justify-between items-start mb-2">
-                <h2 className="text-xl font-bold text-gray-900 leading-tight">
-                    {property.title}
-                </h2>
-                <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">
-                  ${property.price_per_night.toString()}
-                </span>
-              </div>
-
-              {/* Descripción corta */}
-              <p className="text-gray-600 line-clamp-3 text-sm flex-grow mb-4">
-                {property.description}
-              </p>
-              
-              {/* Botones de acción */}
-              <div className="mt-auto flex gap-2">
+          {/* MENÚ DERECHO INTELIGENTE */}
+          <div className="flex items-center gap-4">
+            
+            {/* 🟢 SI ESTÁS LOGUEADO: Muestra Botón Publicar + Avatar */}
+            <SignedIn>
                 <Link 
-                  href={`/propiedad/${property.id}`}
-                  className="flex-1 bg-gray-900 text-white text-center py-2 rounded text-sm font-medium hover:bg-gray-700 transition"
+                  href="/admin/crear" 
+                  className="hidden md:flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-full font-medium transition-all shadow-sm hover:shadow-md text-sm"
                 >
-                  Ver Detalles
+                  <span>+</span> Publicar Propiedad
                 </Link>
                 
+                {/* Botón Móvil */}
                 <Link 
-                  href={`/propiedades/editar/${property.id}`}
-                  className="bg-yellow-100 text-yellow-700 px-3 py-2 rounded text-sm font-medium hover:bg-yellow-200 transition"
-                  title="Editar Propiedad"
+                  href="/admin/crear" 
+                  className="md:hidden bg-rose-500 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-sm"
                 >
-                  ✏️
+                  +
                 </Link>
-              </div>
-            </div>
-          </div>
-        ))}
 
-        {/* Mensaje si no hay nada */}
-        {properties.length === 0 && (
-          <div className="col-span-full text-center py-20">
-            <p className="text-xl text-gray-400 mb-4">No hay propiedades publicadas aún.</p>
-            <Link href="/propiedad/crear" className="text-blue-600 underline">
-                ¡Sé el primero en publicar una!
-            </Link>
+                <div className="border-l pl-4 ml-2 border-gray-200">
+                  <UserButton afterSignOutUrl="/"/>
+                </div>
+            </SignedIn>
+
+            {/* 🔴 SI NO ESTÁS LOGUEADO: Muestra Botón Iniciar Sesión */}
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="text-gray-600 hover:text-gray-900 font-medium text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  Iniciar Sesión
+                </button>
+              </SignInButton>
+            </SignedOut>
+
+          </div>
+        </div>
+      </nav>
+
+      {/* --- CONTENIDO --- */}
+      <main className="container mx-auto px-4 py-8">
+        
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-800">Explora alojamientos únicos</h1>
+          <p className="text-gray-500">Encuentra el lugar perfecto para tu próxima escapada.</p>
+        </div>
+      
+        {properties.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {properties.map((prop) => {
+              const isOwner = userId && prop.owner_id === userId;
+
+              return (
+                <div key={prop.id} className="group bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 flex flex-col">
+                  
+                  <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden">
+                    <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-500">
+                       <ImageCarousel images={prop.images} title={prop.title} fit="cover" />
+                    </div>
+                    {isOwner && (
+                        <span className="absolute top-3 right-3 bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded-full shadow-sm border border-gray-200 z-10">
+                          👑 Tu Propiedad
+                        </span>
+                    )}
+                  </div>
+
+                  <div className="p-4 flex flex-col flex-grow">
+                    <div className="flex justify-between items-start mb-1">
+                      <h2 className="font-bold text-gray-900 line-clamp-1 text-lg group-hover:text-rose-600 transition-colors">
+                        {prop.title}
+                      </h2>
+                    </div>
+                    
+                    <p className="text-gray-500 text-sm line-clamp-2 mb-4">
+                      {prop.description}
+                    </p>
+                    
+                    <div className="mt-auto pt-3 border-t border-gray-50 flex items-center justify-between">
+                        <div>
+                            <span className="text-lg font-bold text-gray-900">${prop.price_per_night.toString()}</span>
+                            <span className="text-gray-400 text-sm font-normal"> / noche</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <Link href={`/propiedad/${prop.slug}`} className="text-sm font-semibold text-gray-900 hover:underline">
+                            Ver
+                          </Link>
+
+                          {isOwner && (
+                            <div className="flex items-center gap-1 pl-2 border-l ml-2">
+                               <Link href={`/propiedades/editar/${prop.id}`} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition">✏️</Link>
+                               <div className="scale-90">
+                                 <DeleteButton propertyId={prop.id} />
+                               </div>
+                            </div>
+                          )}
+                        </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* ESTADO VACÍO */
+          <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-100">
+            <div className="text-6xl mb-4">🏡</div>
+            <h3 className="text-xl font-bold text-gray-800">Aún no hay propiedades</h3>
+            <p className="text-gray-500 mb-6">Sé el primero en publicar tu espacio.</p>
+            
+            {/* Botón también aquí, protegido con SignedIn */}
+            <SignedIn>
+              <Link href="/admin/crear" className="text-rose-600 font-bold hover:underline bg-rose-50 px-4 py-2 rounded-lg">
+                Publicar ahora
+              </Link>
+            </SignedIn>
+            <SignedOut>
+                 <span className="text-gray-400">Inicia sesión para comenzar</span>
+            </SignedOut>
           </div>
         )}
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

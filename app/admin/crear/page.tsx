@@ -1,158 +1,120 @@
-"use client";
-
-import { createProperty } from '@/app/actions';
-import { CldUploadWidget } from 'next-cloudinary';
-import { useState } from 'react';
+import { createProperty } from '@/app/actions'; 
+import { auth } from '@clerk/nextjs/server';
+import { redirect } from 'next/navigation';
+import Link from 'next/link';
 
 export default function CreatePropertyPage() {
-  // Estado para guardar las URLs de las fotos subidas
-  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
-
-  // Función que se ejecuta cuando Cloudinary termina de subir una foto
-  const handleUploadSuccess = (result: any) => {
-    // Verificamos que la carga fue exitosa y tenemos una URL segura
-    if (result.info && result.info.secure_url) {
-        console.log("✅ Foto subida con éxito:", result.info.secure_url);
-        setUploadedImages((prev) => [...prev, result.info.secure_url]);
-    }
-  };
+  // 🔐 1. SEGURIDAD: Solo usuarios logueados pueden entrar aquí
+  const { userId } = auth();
+  if (!userId) {
+    redirect('/');
+  }
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md text-gray-900">
-      
-      <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">
-        Publicar Propiedad
-      </h1>
-
-      <form action={createProperty} className="space-y-4">
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto">
         
-        {/* Título */}
-        <div>
-          <label className="block text-sm font-bold mb-1 text-gray-700">Título del anuncio</label>
-          <input
-            name="title"
-            type="text"
-            required
-            placeholder="Ej: Cabaña en el bosque"
-            className="w-full border border-gray-300 rounded p-2 text-gray-900 placeholder:text-gray-500 bg-white"
-          />
+        {/* Encabezado con Botón Volver */}
+        <div className="flex items-center justify-between mb-8">
+            <div>
+                <h1 className="text-3xl font-extrabold text-gray-900">Publicar tu espacio</h1>
+                <p className="mt-2 text-gray-600">Completa la información para que los huéspedes encuentren tu propiedad.</p>
+            </div>
+            <Link href="/" className="text-sm text-gray-500 hover:text-gray-900 font-medium bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm">
+                ← Cancelar
+            </Link>
         </div>
 
-        {/* Slug */}
-        <div>
-          <label className="block text-sm font-bold mb-1 text-gray-700">Slug (URL única)</label>
-          <input
-            name="slug"
-            type="text"
-            required
-            placeholder="ej: cabana-bosque-99"
-            className="w-full border border-gray-300 rounded p-2 text-gray-900 placeholder:text-gray-500 bg-white"
-          />
-          <p className="text-xs text-red-500 mt-1">* Debe ser único (sin espacios, usa guiones)</p>
-        </div>
+        {/* TARJETA DEL FORMULARIO */}
+        <div className="bg-white shadow-xl rounded-2xl overflow-hidden">
+          <form action={createProperty} className="p-8 space-y-8">
+            
+            {/* SECCIÓN 1: DETALLES BÁSICOS */}
+            <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-800 border-b pb-2">📍 Información Principal</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Título del anuncio</label>
+                        <input type="text" name="title" required placeholder="Ej: Cabaña rústica con vista al lago" 
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none transition" />
+                    </div>
 
-        {/* Descripción */}
-        <div>
-          <label className="block text-sm font-bold mb-1 text-gray-700">Descripción</label>
-          <textarea
-            name="description"
-            required
-            placeholder="Descripción detallada..."
-            className="w-full border border-gray-300 rounded p-2 h-24 text-gray-900 placeholder:text-gray-500 bg-white"
-          />
-        </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Slug (URL única)</label>
+                        <input type="text" name="slug" required placeholder="ej: cabana-lago-01" 
+                               className="w-full p-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 focus:bg-white transition outline-none focus:ring-2 focus:ring-rose-500" />
+                        <p className="text-xs text-gray-400 mt-1">Sin espacios, usa guiones.</p>
+                    </div>
 
-        {/* Precio */}
-        <div>
-          <label className="block text-sm font-bold mb-1 text-gray-700">Precio por noche (USD)</label>
-          <input
-            name="price"
-            type="number"
-            required
-            placeholder="100"
-            className="w-full border border-gray-300 rounded p-2 text-gray-900 placeholder:text-gray-500 bg-white"
-          />
-        </div>
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Precio por noche (ARS)</label>
+                        <div className="relative">
+                            <span className="absolute left-3 top-3 text-gray-500">$</span>
+                            <input type="number" name="price" required step="0.01" placeholder="0.00" 
+                                   className="w-full pl-8 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" />
+                        </div>
+                    </div>
 
-        {/* --- SECCIÓN: AMENITIES --- */}
-        <div className="space-y-4 border-t border-gray-200 pt-4 mt-6 bg-blue-50 p-4 rounded-md border border-blue-100">
-           <h3 className="text-lg font-medium text-gray-900">Comodidades</h3>
-           <div className="grid grid-cols-2 gap-3">
-             <label className="flex items-center space-x-2 cursor-pointer">
-               <input type="checkbox" name="amenities" value="wifi" className="w-4 h-4 text-blue-600 rounded" />
-               <span className="text-gray-700 text-sm">📶 Wifi</span>
-             </label>
-             <label className="flex items-center space-x-2 cursor-pointer">
-               <input type="checkbox" name="amenities" value="piscina" className="w-4 h-4 text-blue-600 rounded" />
-               <span className="text-gray-700 text-sm">🏊 Piscina</span>
-             </label>
-             <label className="flex items-center space-x-2 cursor-pointer">
-               <input type="checkbox" name="amenities" value="aire" className="w-4 h-4 text-blue-600 rounded" />
-               <span className="text-gray-700 text-sm">❄️ Aire Acond.</span>
-             </label>
-             <label className="flex items-center space-x-2 cursor-pointer">
-               <input type="checkbox" name="amenities" value="mascotas" className="w-4 h-4 text-blue-600 rounded" />
-               <span className="text-gray-700 text-sm">🐶 Mascotas</span>
-             </label>
-             <label className="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" name="amenities" value="parking" className="w-4 h-4 text-blue-600 rounded" />
-                <span className="text-gray-700 text-sm">🚗 Parking</span>
-             </label>
-             <label className="flex items-center space-x-2 cursor-pointer">
-                <input type="checkbox" name="amenities" value="gym" className="w-4 h-4 text-blue-600 rounded" />
-                <span className="text-gray-700 text-sm">🏋️ Gimnasio</span>
-             </label>
-           </div>
-        </div>
+                    <div className="col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Dirección completa</label>
+                        <input type="text" name="address" required placeholder="Calle, Número, Ciudad" 
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" />
+                    </div>
 
-        {/* --- SECCIÓN: IMÁGENES CLOUDINARY --- */}
-        <div className="space-y-4 border-t border-gray-200 pt-4 mt-6 bg-gray-50 p-4 rounded-md">
-          <h3 className="text-lg font-medium text-gray-900">Galería de Fotos</h3>
-          <p className="text-xs text-gray-600 mb-2">
-            Las fotos se guardan en la nube automáticamente.
-          </p>
-          
-          {/* Widget de Cloudinary */}
-          <CldUploadWidget 
-            uploadPreset="alquileres_cloud" 
-            onSuccess={handleUploadSuccess}
-          >
-            {({ open }) => {
-              return (
-                <button 
-                  type="button" 
-                  onClick={() => open()}
-                  className="bg-gray-800 text-white px-4 py-2 rounded text-sm font-medium hover:bg-gray-700 transition w-full mb-4"
-                >
-                  📸 Subir Nueva Foto
+                    <div className="col-span-2">
+                        <label className="block text-sm font-semibold text-gray-700 mb-1">Descripción</label>
+                        <textarea name="description" rows={5} placeholder="Describe lo que hace especial a este lugar..." 
+                                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            {/* SECCIÓN 2: IMÁGENES */}
+            <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-800 border-b pb-2">📸 Galería de Fotos</h2>
+                <p className="text-sm text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                    💡 <strong>Tip MVP:</strong> Por ahora, pega las URLs de tus imágenes (puedes usar Unsplash, Google Photos, etc).
+                </p>
+                
+                <div className="space-y-3">
+                    <input type="url" name="imagen1" required placeholder="URL de la Foto Principal (Portada)" 
+                           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none" />
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="url" name="imagen2" placeholder="URL Foto 2 (Opcional)" 
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none" />
+                        <input type="url" name="imagen3" placeholder="URL Foto 3 (Opcional)" 
+                               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none" />
+                    </div>
+                </div>
+            </div>
+
+            {/* SECCIÓN 3: AMENITIES */}
+            <div className="space-y-6">
+                <h2 className="text-xl font-bold text-gray-800 border-b pb-2">✨ Comodidades</h2>
+                
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {['Wifi', 'Piscina', 'Aire Acondicionado', 'Cocina', 'Estacionamiento', 'TV', 'Lavadora', 'Mascotas'].map((item) => (
+                        <label key={item} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition">
+                            <input type="checkbox" name="amenities" value={item} className="w-5 h-5 text-rose-500 border-gray-300 rounded focus:ring-rose-500" />
+                            <span className="text-gray-700 font-medium">{item}</span>
+                        </label>
+                    ))}
+                </div>
+            </div>
+
+            {/* BOTÓN FINAL */}
+            <div className="pt-6 border-t">
+                <button type="submit" 
+                        className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 text-lg">
+                    🚀 Publicar Propiedad
                 </button>
-              );
-            }}
-          </CldUploadWidget>
+            </div>
 
-          {/* Previsualización */}
-          <div className="grid grid-cols-3 gap-2">
-            {uploadedImages.map((url, index) => (
-              <div key={index} className="relative aspect-square">
-                <img src={url} alt="Uploaded" className="object-cover w-full h-full rounded border border-gray-300" />
-              </div>
-            ))}
-          </div>
-
-          {/* Inputs ocultos (Esenciales para enviar datos a la BD) */}
-          <input type="hidden" name="imagen1" value={uploadedImages[0] || ""} />
-          <input type="hidden" name="imagen2" value={uploadedImages[1] || ""} />
-          <input type="hidden" name="imagen3" value={uploadedImages[2] || ""} />
-          
+          </form>
         </div>
-
-        <button
-          type="submit"
-          className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded hover:bg-blue-700 transition mt-6"
-        >
-          Guardar Propiedad
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

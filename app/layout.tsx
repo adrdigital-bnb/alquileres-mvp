@@ -1,41 +1,38 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-import Navbar from "./components/Navbar"; // <--- 1. IMPORTAMOS EL NAVBAR
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Alquileres MVP", // Aprovechamos para ponerle un título real
-  description: "Encuentra tu próximo destino",
-};
+import { ClerkProvider, SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
+import './globals.css'
+// ... tus otros imports
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: {
+  children: React.ReactNode
+}) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {/* 2. COLOCAMOS EL NAVBAR AQUÍ, ANTES DEL CONTENIDO */}
-        <Navbar />
+    <ClerkProvider>
+      <html lang="es">
+        <body>
+          {/* Barra de navegación temporal para probar el Login */}
+          <header className="p-4 border-b flex justify-between items-center">
+             <h1 className="font-bold">Alquileres MVP</h1>
+             <div>
+               <SignedOut>
+                 {/* Si NO está logueado, muestra botón de entrar */}
+                 <SignInButton mode="modal">
+                    <button className="bg-blue-600 text-white px-4 py-2 rounded">
+                      Iniciar Sesión
+                    </button>
+                 </SignInButton>
+               </SignedOut>
+               <SignedIn>
+                 {/* Si ESTÁ logueado, muestra el avatar del usuario */}
+                 <UserButton />
+               </SignedIn>
+             </div>
+          </header>
 
-        {/* El children es el resto de tu app (Home, Detalle, etc.) */}
-        <main>
-           {children}
-        </main>
-      </body>
-    </html>
-  );
+          <main>{children}</main>
+        </body>
+      </html>
+    </ClerkProvider>
+  )
 }

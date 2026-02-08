@@ -1,22 +1,22 @@
-'use client'; // 👈 Esto habilita los clicks
+'use client'; 
 
-import { deleteProperty } from "@/app/actions";
+import { deleteProperty } from '@/app/actions';
 
-export default function DeleteButton({ id }: { id: string }) {
+export default function DeleteButton({ propertyId }: { propertyId: string }) {
   return (
-    <form action={deleteProperty} className="mt-4 pt-2 flex justify-end">
-      <input type="hidden" name="propertyId" value={id} />
+    <form action={deleteProperty} onSubmit={(e) => {
+      if (!confirm('¿Seguro que quieres borrar esta propiedad?')) {
+        e.preventDefault();
+      }
+    }}>
+      {/* Input invisible que lleva el ID al servidor */}
+      <input type="hidden" name="propertyId" value={propertyId} />
+      
       <button 
-         type="submit"
-         className="text-red-400 text-xs hover:text-red-600 hover:underline transition-colors"
-         onClick={(e) => {
-           // Ahora sí podemos usar confirm porque estamos en un Client Component
-           if(!confirm("¿Estás seguro de borrar esta propiedad?")) {
-             e.preventDefault();
-           }
-         }}
+        type="submit" 
+        className="text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1 rounded text-sm font-medium transition-colors border border-transparent hover:border-red-200"
       >
-        Borrar 🗑️
+        🗑️ Borrar
       </button>
     </form>
   );

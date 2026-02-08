@@ -3,9 +3,17 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { auth } from '@clerk/nextjs/server'; // 👈 1. Importamos la autenticación
 
 // --- 1. FUNCIÓN PARA CREAR (CREATE) ---
 export async function createProperty(formData: FormData) {
+  // 🔐 SEGURIDAD: Obtenemos el usuario real de Clerk
+  const { userId } = auth();
+
+  if (!userId) {
+    throw new Error("Debes iniciar sesión para publicar una propiedad");
+  }
+
   // A. OBTENER DATOS
   const title = formData.get('title') as string;
   const slug = formData.get('slug') as string;
@@ -19,21 +27,11 @@ export async function createProperty(formData: FormData) {
   const imagen3 = formData.get('imagen3') as string;
   const images = [imagen1, imagen2, imagen3].filter(Boolean);
 
-  // C. AMENITIES (Checkboxes) -> Array de strings
+  // C. AMENITIES
   const amenities = formData.getAll('amenities') as string[];
 
-  // D. DUEÑO (Lógica temporal)
-  let owner = await prisma.users.findFirst();
-  if (!owner) {
-    owner = await prisma.users.create({
-      data: {
-        email: "admin@test.com",
-        full_name: "Admin Host",
-        password_hash: "temp_pass_123",
-        role: "HOST",
-      }
-    });
-  }
+  // D. DUEÑO (Lógica REAL)
+  // Ya no creamos usuarios falsos. Usamos tu ID de Clerk directamente.
 
   // E. GUARDAR EN BD
   await prisma.properties.create({
@@ -44,9 +42,7 @@ export async function createProperty(formData: FormData) {
       price_per_night: price,
       address,
       images,
-      owner_id: owner.id,
-      
-      // 🔥 CORRECCIÓN JSON: Pasamos el array directo
+      owner_id: userId, // 👈 Aquí guardamos TU firma digital (ej: user_2b...)
       amenities: amenities, 
     },
   });
@@ -58,9 +54,22 @@ export async function createProperty(formData: FormData) {
 
 // --- 2. FUNCIÓN PARA ACTUALIZAR (UPDATE / EDITAR) ---
 export async function updateProperty(formData: FormData) {
+  const { userId } = auth(); // 🔐 Obtenemos quién intenta editar
+  
   const id = formData.get('id') as string;
   const slug = formData.get('slug') as string;
 
+  // 🛡️ VERIFICACIÓN DE PROPIEDAD
+  // Antes de editar, buscamos la propiedad para ver de quién es
+  const existingProperty = await prisma.properties.findUnique({
+    where: { id }
+  });
+
+  if (!existingProperty || existingProperty.owner_id !== userId) {
+    throw new Error("⛔ Acceso denegado: No eres el dueño de esta propiedad.");
+  }
+
+  // Si pasa la verificación, procedemos:
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
   const price = parseFloat(formData.get('price') as string);
@@ -71,10 +80,8 @@ export async function updateProperty(formData: FormData) {
   const imagen3 = formData.get('imagen3') as string;
   const images = [imagen1, imagen2, imagen3].filter(Boolean);
 
-  // C. CAPTURAR AMENITIES -> Array de strings
   const amenities = formData.getAll('amenities') as string[];
 
-  // E. ACTUALIZAR EN BD
   await prisma.properties.update({
     where: { id },
     data: {
@@ -83,8 +90,6 @@ export async function updateProperty(formData: FormData) {
       price_per_night: price,
       address,
       images,
-      
-      // 🔥 CORRECCIÓN JSON: Pasamos el array directo
       amenities: amenities, 
     },
   });
@@ -98,10 +103,20 @@ export async function updateProperty(formData: FormData) {
 }
 
 // --- 3. FUNCIÓN PARA BORRAR (DELETE) ---
-// Esta es la que te faltaba y causaba el error en el build
 export async function deleteProperty(formData: FormData) {
+  const { userId } = auth(); // 🔐 Obtenemos quién intenta borrar
   const propertyId = formData.get('propertyId') as string;
 
+  // 🛡️ VERIFICACIÓN DE PROPIEDAD
+  const existingProperty = await prisma.properties.findUnique({
+    where: { id: propertyId }
+  });
+
+  if (!existingProperty || existingProperty.owner_id !== userId) {
+    throw new Error("⛔ Acceso denegado: No puedes borrar una propiedad ajena.");
+  }
+
+  // Si es el dueño, procedemos a borrar
   await prisma.properties.delete({
     where: { id: propertyId }
   });
