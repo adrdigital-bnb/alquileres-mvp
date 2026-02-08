@@ -2,17 +2,20 @@ import { prisma } from '@/lib/prisma';
 import ImageCarousel from '@/app/components/ImageCarousel'; 
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
-import { SignInButton, UserButton, SignedIn, SignedOut } from '@clerk/nextjs'; // 👈 Importamos SignedIn/SignedOut
+import { SignInButton, UserButton, SignedIn, SignedOut } from '@clerk/nextjs'; 
 import DeleteButton from '@/app/components/DeleteButton';   
 
 export const dynamic = "force-dynamic";
 
+// 👇 1. Agregamos 'async' aquí
 export default async function Home() {
+  
   const properties = await prisma.properties.findMany({
     orderBy: { created_at: 'desc' },
   });
 
-  const { userId } = auth();
+  // 👇 2. Agregamos 'await' aquí (esta es la corrección clave)
+  const { userId } = await auth();
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
@@ -23,7 +26,7 @@ export default async function Home() {
           
           <Link href="/" className="flex items-center gap-2 group">
             <div className="bg-rose-500 text-white p-1.5 rounded-lg transform group-hover:rotate-12 transition-transform">
-              🏠
+              🏡
             </div>
             <span className="text-xl font-bold tracking-tight text-gray-800">
               Alquileres MVP
@@ -79,6 +82,7 @@ export default async function Home() {
         {properties.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {properties.map((prop) => {
+              // Verificamos si el usuario actual es el dueño
               const isOwner = userId && prop.owner_id === userId;
 
               return (
@@ -86,7 +90,7 @@ export default async function Home() {
                   
                   <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden">
                     <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-500">
-                       <ImageCarousel images={prop.images} title={prop.title} fit="cover" />
+                        <ImageCarousel images={prop.images} title={prop.title} fit="cover" />
                     </div>
                     {isOwner && (
                         <span className="absolute top-3 right-3 bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded-full shadow-sm border border-gray-200 z-10">
@@ -146,7 +150,7 @@ export default async function Home() {
               </Link>
             </SignedIn>
             <SignedOut>
-                 <span className="text-gray-400">Inicia sesión para comenzar</span>
+                  <span className="text-gray-400">Inicia sesión para comenzar</span>
             </SignedOut>
           </div>
         )}
