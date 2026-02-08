@@ -8,7 +8,7 @@ import { auth } from '@clerk/nextjs/server'; // 👈 1. Importamos la autenticac
 // --- 1. FUNCIÓN PARA CREAR (CREATE) ---
 export async function createProperty(formData: FormData) {
   // 🔐 SEGURIDAD: Obtenemos el usuario real de Clerk
-  const { userId } = auth();
+ const { userId } = await auth(); // <--- Agregamos await
 
   if (!userId) {
     throw new Error("Debes iniciar sesión para publicar una propiedad");
