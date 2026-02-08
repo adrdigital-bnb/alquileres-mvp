@@ -3,12 +3,12 @@
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { auth } from '@clerk/nextjs/server'; // 👈 1. Importamos la autenticación
+import { auth } from '@clerk/nextjs/server';
 
 // --- 1. FUNCIÓN PARA CREAR (CREATE) ---
 export async function createProperty(formData: FormData) {
-  const { userId } = await auth(); // <--- Agregale el await aquí también
-  // ...
+  // ✅ CORREGIDO: Usamos await aquí
+  const { userId } = await auth(); 
 
   if (!userId) {
     throw new Error("Debes iniciar sesión para publicar una propiedad");
@@ -30,9 +30,6 @@ export async function createProperty(formData: FormData) {
   // C. AMENITIES
   const amenities = formData.getAll('amenities') as string[];
 
-  // D. DUEÑO (Lógica REAL)
-  // Ya no creamos usuarios falsos. Usamos tu ID de Clerk directamente.
-
   // E. GUARDAR EN BD
   await prisma.properties.create({
     data: {
@@ -42,7 +39,7 @@ export async function createProperty(formData: FormData) {
       price_per_night: price,
       address,
       images,
-      owner_id: userId, // 👈 Aquí guardamos TU firma digital (ej: user_2b...)
+      owner_id: userId,
       amenities: amenities, 
     },
   });
@@ -54,13 +51,17 @@ export async function createProperty(formData: FormData) {
 
 // --- 2. FUNCIÓN PARA ACTUALIZAR (UPDATE / EDITAR) ---
 export async function updateProperty(formData: FormData) {
-  const { userId } = auth(); // 🔐 Obtenemos quién intenta editar
+  // ✅ CORREGIDO: Agregamos await aquí también
+  const { userId } = await auth(); 
   
+  if (!userId) {
+     throw new Error("Debes iniciar sesión para editar.");
+  }
+
   const id = formData.get('id') as string;
   const slug = formData.get('slug') as string;
 
   // 🛡️ VERIFICACIÓN DE PROPIEDAD
-  // Antes de editar, buscamos la propiedad para ver de quién es
   const existingProperty = await prisma.properties.findUnique({
     where: { id }
   });
@@ -104,7 +105,13 @@ export async function updateProperty(formData: FormData) {
 
 // --- 3. FUNCIÓN PARA BORRAR (DELETE) ---
 export async function deleteProperty(formData: FormData) {
-  const { userId } = auth(); // 🔐 Obtenemos quién intenta borrar
+  // ✅ CORREGIDO: Agregamos await aquí también
+  const { userId } = await auth(); 
+  
+  if (!userId) {
+     throw new Error("Debes iniciar sesión para borrar.");
+  }
+
   const propertyId = formData.get('propertyId') as string;
 
   // 🛡️ VERIFICACIÓN DE PROPIEDAD
