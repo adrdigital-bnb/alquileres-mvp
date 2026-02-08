@@ -3,9 +3,12 @@ import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
-export default function CreatePropertyPage() {
-  // 🔐 1. SEGURIDAD: Solo usuarios logueados pueden entrar aquí
-  const { userId } = auth();
+// 👇 1. Agregamos 'async' para poder esperar la respuesta de autenticación
+export default async function CreatePropertyPage() {
+  
+  // 🔐 2. SEGURIDAD: Usamos 'await' porque auth() es una promesa
+  const { userId } = await auth();
+
   if (!userId) {
     redirect('/');
   }
