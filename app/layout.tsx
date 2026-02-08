@@ -7,8 +7,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    // 👇 AQUÍ ESTÁ EL CAMBIO CLAVE:
-    // Agregamos 'publishableKey' para obligar a Vercel a leer la variable.
+    // 👇 SOLUCIÓN: Agregamos esta línea para que Vercel lea la clave sí o sí
     <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <html lang="es">
         <body>
@@ -33,7 +32,7 @@ export default function RootLayout({
 
           <main>{children}</main>
         </body>
-      </html >
+      </html>
     </ClerkProvider>
   )
 }
