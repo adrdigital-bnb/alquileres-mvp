@@ -1,6 +1,11 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-export default clerkMiddleware();
+// 👇 AGREGAMOS LAS CLAVES AQUÍ DIRECTAMENTE
+// Reemplaza los textos entre comillas con tus claves reales de .env.local
+export default clerkMiddleware(undefined, {
+  publishableKey: "pk_test_cHJvcGVyLXN0dWQtMjQuY2xlcmsuYWNjb3VudHMuZGV2JA",
+  secretKey: "sk_test_rKNwn5jrtuafxDhpgVr5dJ2sBJF5RQQQag8AiNSXa5"
+});
 
 export const config = {
   matcher: [
