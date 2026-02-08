@@ -1,11 +1,9 @@
+// middleware.ts
 import { clerkMiddleware } from "@clerk/nextjs/server";
 
-// 👇 CAMBIO: En vez de 'undefined', ponemos una función vacía '() => {}'
-// IMPORTANTE: Asegúrate de que las claves "pk_test" y "sk_test" sean las REALES
-export default clerkMiddleware(() => {}, {
-  publishableKey: "pk_test_cHJvcGVyLXN0dWQtMjQuY2xlcmsuYWNjb3VudHMuZGV2JA", 
-  secretKey: "sk_test_rKNwn5jrtuafxDhpgVr5dJ2sBJF5RQQQag8AiNSXa5"
-});
+// 👇 Usamos la función vacía, pero SIN pasarle las claves.
+// Clerk las leerá automáticamente de Vercel (Environment Variables).
+export default clerkMiddleware();
 
 export const config = {
   matcher: [
