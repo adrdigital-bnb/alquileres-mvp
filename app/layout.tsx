@@ -1,6 +1,5 @@
 import { ClerkProvider, SignInButton, SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import './globals.css'
-// ... tus otros imports
 
 export default function RootLayout({
   children,
@@ -8,7 +7,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <ClerkProvider>
+    // 👇 AQUÍ ESTÁ EL CAMBIO CLAVE:
+    // Agregamos 'publishableKey' para obligar a Vercel a leer la variable.
+    <ClerkProvider publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>
       <html lang="es">
         <body>
           {/* Barra de navegación temporal para probar el Login */}
@@ -32,7 +33,7 @@ export default function RootLayout({
 
           <main>{children}</main>
         </body>
-      </html>
+      </html >
     </ClerkProvider>
   )
 }
