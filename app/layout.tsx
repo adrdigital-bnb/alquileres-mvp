@@ -7,10 +7,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    // 👇 AQUÍ ESTÁ LA SOLUCIÓN:
-    // Pega tu clave pk_test_... REAL entre comillas.
-    // Esto garantiza que el Build no falle nunca más por "Missing key".
-    <ClerkProvider publishableKey="pk_test_AQUI_PEGA_TU_CODIGO_LARGO_QUE_EMPIEZA_CON_PK_TEST">
+    // 👇 OJO AQUÍ: Asegúrate de que NO haya espacios dentro de las comillas.
+    // Debe ser algo como: publishableKey="pk_test_aBcD123..."
+    <ClerkProvider publishableKey="pk_test_cHJvcGVyLXN0dWQtMjQuY2xlcmsuYWNjb3VudHMuZGV2JA">
       <html lang="es">
         <body>
           <header className="p-4 border-b flex justify-between items-center">
