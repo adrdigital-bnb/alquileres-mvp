@@ -17,7 +17,8 @@
     "next-cloudinary": "^6.17.5",
     "prisma": "^5.22.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "svix": "^1.84.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
