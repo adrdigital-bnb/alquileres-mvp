@@ -5,6 +5,16 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { auth } from '@clerk/nextjs/server';
 
+// 🛠️ HELPER: Función para limpiar Slugs (Adiós Ñ y tildes)
+function cleanSlug(text: string) {
+  return text
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Quita tildes (á -> a)
+    .replace(/ñ/g, "n") // Cambia ñ -> n
+    .replace(/\s+/g, '-') // Espacios -> guiones
+    .replace(/[^\w-]+/g, ''); // Borra caracteres raros
+}
+
 // --- 1. FUNCIÓN PARA CREAR (CREATE) ---
 export async function createProperty(formData: FormData) {
   const { userId } = await auth();
@@ -17,40 +27,42 @@ export async function createProperty(formData: FormData) {
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
   
-  // Validación de Precio: Si falla, usamos 0
+  // Validación de Precio: Si falla o es NaN, usamos 0
   const rawPrice = formData.get('price');
   const price = rawPrice ? parseFloat(rawPrice as string) : 0;
+  const safePrice = isNaN(price) ? 0 : price;
 
   // Validación de Dirección
-  const address = (formData.get('address') as string) || title || "Dirección a confirmar";
+  const address = (formData.get('address') as string) || "Ubicación por confirmar";
 
-  // Validación de Slug (Crucial para que no explote la BD por duplicados o vacíos)
+  // B. GENERACIÓN DE SLUG ROBUSTA (Fix para Vercel)
   let slug = formData.get('slug') as string;
-  if (!slug) {
-    // Genera algo como: "departamento-centro-1707590000000"
-    const slugBase = title 
-      ? title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '')
-      : 'propiedad';
-    slug = `${slugBase}-${Date.now()}`;
-  }
+  
+  // Si el usuario escribió un slug, lo limpiamos. Si no, lo creamos desde el título.
+  const baseForSlug = slug && slug.trim().length > 0 ? slug : title;
+  const cleanBase = cleanSlug(baseForSlug || 'propiedad');
+  
+  // Agregamos timestamp para asegurar que sea único
+  slug = `${cleanBase}-${Date.now()}`;
 
-  // B. IMÁGENES
-  const imagen1 = formData.get('imagen1') as string;
-  const imagen2 = formData.get('imagen2') as string;
-  const imagen3 = formData.get('imagen3') as string;
-  const images = [imagen1, imagen2, imagen3].filter(Boolean);
+  // C. IMÁGENES (Recoge imagen1, 2 y 3)
+  const images = [
+    formData.get('imagen1'),
+    formData.get('imagen2'),
+    formData.get('imagen3')
+  ].filter((img) => typeof img === 'string' && img.trim().length > 0) as string[];
 
-  // C. AMENITIES
+  // D. AMENITIES
   const amenities = formData.getAll('amenities') as string[];
 
-  // D. INTENTAR GUARDAR EN BD
+  // E. GUARDAR EN BD
   try {
     await prisma.properties.create({
       data: {
         title,
-        slug, // Ahora garantizamos que nunca es null ni vacío
+        slug, 
         description,
-        price_per_night: price,
+        price_per_night: safePrice,
         address,
         images,
         owner_id: userId,
@@ -59,12 +71,10 @@ export async function createProperty(formData: FormData) {
     });
     
   } catch (error) {
-    console.error("❌ ERROR AL CREAR PROPIEDAD:", error);
-    // Lanzamos el error para verlo en pantalla si estamos en desarrollo
-    throw new Error("No se pudo guardar la propiedad. Revisa la consola del servidor.");
+    console.error("❌ ERROR AL CREAR:", error);
+    throw new Error("Error al guardar en base de datos.");
   }
 
-  // E. REDIRECCIONAR (Siempre fuera del try/catch)
   revalidatePath('/');
   redirect('/');
 }
@@ -78,7 +88,9 @@ export async function updateProperty(formData: FormData) {
   }
 
   const id = formData.get('id') as string;
-  const slug = formData.get('slug') as string;
+  
+  // Recuperamos el slug original para poder redirigir bien al final
+  const currentSlug = formData.get('slug') as string;
 
   // 🛡️ VERIFICACIÓN DE PROPIEDAD
   const existingProperty = await prisma.properties.findUnique({
@@ -86,40 +98,50 @@ export async function updateProperty(formData: FormData) {
   });
 
   if (!existingProperty || existingProperty.owner_id !== userId) {
-    throw new Error("⛔ Acceso denegado: No eres el dueño de esta propiedad.");
+    throw new Error("⛔ Acceso denegado.");
   }
 
-  // Si pasa la verificación, procedemos:
+  // DATOS A ACTUALIZAR
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
-  const price = parseFloat(formData.get('price') as string);
-  const address = (formData.get('address') as string) || title;
+  
+  const rawPrice = formData.get('price');
+  const price = rawPrice ? parseFloat(rawPrice as string) : 0;
+  const safePrice = isNaN(price) ? 0 : price;
 
-  const imagen1 = formData.get('imagen1') as string;
-  const imagen2 = formData.get('imagen2') as string;
-  const imagen3 = formData.get('imagen3') as string;
-  const images = [imagen1, imagen2, imagen3].filter(Boolean);
+  const address = (formData.get('address') as string) || title; // Fallback simple
+
+  // 🚨 AQUÍ ES DONDE FALLABA LA EDICIÓN DE FOTOS
+  // Filtramos estrictamente para que solo pasen strings con contenido real
+  const images = [
+    formData.get('imagen1'),
+    formData.get('imagen2'),
+    formData.get('imagen3')
+  ].filter((img) => typeof img === 'string' && img.trim().length > 0) as string[];
 
   const amenities = formData.getAll('amenities') as string[];
 
+  // ACTUALIZAMOS
   await prisma.properties.update({
     where: { id },
     data: {
       title,
       description,
-      price_per_night: price,
+      price_per_night: safePrice,
       address,
-      images,
+      images: images, // ¡Ahora sí guarda el array actualizado!
       amenities: amenities, 
     },
   });
 
+  // Revalidamos caché
   revalidatePath('/');
-  if (slug) {
-    revalidatePath(`/propiedad/${slug}`);
+  if (currentSlug) {
+    revalidatePath(`/propiedad/${currentSlug}`);
   }
   
-  redirect('/');
+  // Redirigimos a la página de la propiedad
+  redirect(`/propiedad/${currentSlug}`);
 }
 
 // --- 3. FUNCIÓN PARA BORRAR (DELETE) ---
@@ -127,21 +149,19 @@ export async function deleteProperty(formData: FormData) {
   const { userId } = await auth();
   
   if (!userId) {
-     throw new Error("Debes iniciar sesión para borrar.");
+     throw new Error("Debes iniciar sesión.");
   }
 
   const propertyId = formData.get('propertyId') as string;
 
-  // 🛡️ VERIFICACIÓN DE PROPIEDAD
   const existingProperty = await prisma.properties.findUnique({
     where: { id: propertyId }
   });
 
   if (!existingProperty || existingProperty.owner_id !== userId) {
-    throw new Error("⛔ Acceso denegado: No puedes borrar una propiedad ajena.");
+    throw new Error("⛔ No puedes borrar esto.");
   }
 
-  // Si es el dueño, procedemos a borrar
   await prisma.properties.delete({
     where: { id: propertyId }
   });
