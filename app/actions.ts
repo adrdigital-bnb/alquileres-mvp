@@ -7,19 +7,32 @@ import { auth } from '@clerk/nextjs/server';
 
 // --- 1. FUNCIÓN PARA CREAR (CREATE) ---
 export async function createProperty(formData: FormData) {
-  // ✅ CORREGIDO: Usamos await aquí
-  const { userId } = await auth(); 
+  const { userId } = await auth();
 
   if (!userId) {
     throw new Error("Debes iniciar sesión para publicar una propiedad");
   }
 
-  // A. OBTENER DATOS
+  // A. OBTENER Y VALIDAR DATOS
   const title = formData.get('title') as string;
-  const slug = formData.get('slug') as string;
-  const price = parseFloat(formData.get('price') as string);
   const description = formData.get('description') as string;
+  
+  // Validación de Precio: Si falla, usamos 0
+  const rawPrice = formData.get('price');
+  const price = rawPrice ? parseFloat(rawPrice as string) : 0;
+
+  // Validación de Dirección
   const address = (formData.get('address') as string) || title || "Dirección a confirmar";
+
+  // Validación de Slug (Crucial para que no explote la BD por duplicados o vacíos)
+  let slug = formData.get('slug') as string;
+  if (!slug) {
+    // Genera algo como: "departamento-centro-1707590000000"
+    const slugBase = title 
+      ? title.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w-]+/g, '')
+      : 'propiedad';
+    slug = `${slugBase}-${Date.now()}`;
+  }
 
   // B. IMÁGENES
   const imagen1 = formData.get('imagen1') as string;
@@ -30,29 +43,35 @@ export async function createProperty(formData: FormData) {
   // C. AMENITIES
   const amenities = formData.getAll('amenities') as string[];
 
-  // E. GUARDAR EN BD
-  await prisma.properties.create({
-    data: {
-      title,
-      slug,
-      description,
-      price_per_night: price,
-      address,
-      images,
-      owner_id: userId,
-      amenities: amenities, 
-    },
-  });
+  // D. INTENTAR GUARDAR EN BD
+  try {
+    await prisma.properties.create({
+      data: {
+        title,
+        slug, // Ahora garantizamos que nunca es null ni vacío
+        description,
+        price_per_night: price,
+        address,
+        images,
+        owner_id: userId,
+        amenities: amenities,
+      },
+    });
+    
+  } catch (error) {
+    console.error("❌ ERROR AL CREAR PROPIEDAD:", error);
+    // Lanzamos el error para verlo en pantalla si estamos en desarrollo
+    throw new Error("No se pudo guardar la propiedad. Revisa la consola del servidor.");
+  }
 
-  // F. REDIRECCIONAR
+  // E. REDIRECCIONAR (Siempre fuera del try/catch)
   revalidatePath('/');
   redirect('/');
 }
 
-// --- 2. FUNCIÓN PARA ACTUALIZAR (UPDATE / EDITAR) ---
+// --- 2. FUNCIÓN PARA ACTUALIZAR (UPDATE) ---
 export async function updateProperty(formData: FormData) {
-  // ✅ CORREGIDO: Agregamos await aquí también
-  const { userId } = await auth(); 
+  const { userId } = await auth();
   
   if (!userId) {
      throw new Error("Debes iniciar sesión para editar.");
@@ -105,8 +124,7 @@ export async function updateProperty(formData: FormData) {
 
 // --- 3. FUNCIÓN PARA BORRAR (DELETE) ---
 export async function deleteProperty(formData: FormData) {
-  // ✅ CORREGIDO: Agregamos await aquí también
-  const { userId } = await auth(); 
+  const { userId } = await auth();
   
   if (!userId) {
      throw new Error("Debes iniciar sesión para borrar.");
