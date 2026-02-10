@@ -2,7 +2,7 @@ import { createProperty } from '@/app/actions';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import ImageUpload from '@/app/components/ImageUpload'; // Asegúrate de importar esto si ya lo usas, si no, usa el input normal
+import ImageUpload from '@/app/components/UploadWidget'; // Asegúrate de importar esto si ya lo usas, si no, usa el input normal
 
 export default async function CreatePropertyPage() {
   const { userId } = await auth();

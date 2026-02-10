@@ -1,7 +1,7 @@
 "use client";
 
 import { createProperty } from '@/app/actions'; 
-import ImageUpload from '@/app/components/ImageUpload'; // Tu componente del widget
+import ImageUpload from '@/app/components/UploadWidget'; // Tu componente del widget
 import { useState } from 'react';
 import Link from 'next/link';
 
