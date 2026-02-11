@@ -23,11 +23,12 @@ export async function createProperty(formData: FormData) {
     throw new Error("Debes iniciar sesión para publicar una propiedad");
   }
 
-  // A. OBTENER Y VALIDAR DATOS
+  // A. OBTENER DATOS
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
+  const city = (formData.get('city') as string) || "Buenos Aires"; // 🟢 Agregamos Ciudad
   
-  // Validación de Precio: Si falla o es NaN, usamos 0
+  // Validación de Precio
   const rawPrice = formData.get('price');
   const price = rawPrice ? parseFloat(rawPrice as string) : 0;
   const safePrice = isNaN(price) ? 0 : price;
@@ -35,39 +36,29 @@ export async function createProperty(formData: FormData) {
   // Validación de Dirección
   const address = (formData.get('address') as string) || "Ubicación por confirmar";
 
-  // B. GENERACIÓN DE SLUG ROBUSTA
-  let slug = formData.get('slug') as string;
-  
-  // Si el usuario escribió un slug, lo limpiamos. Si no, lo creamos desde el título.
-  const baseForSlug = slug && slug.trim().length > 0 ? slug : title;
-  const cleanBase = cleanSlug(baseForSlug || 'propiedad');
-  
-  // Agregamos timestamp para asegurar que sea único
-  slug = `${cleanBase}-${Date.now()}`;
+  // B. GENERACIÓN DE SLUG
+  // Creamos el slug base desde el título + timestamp para que sea único
+  const cleanBase = cleanSlug(title || 'propiedad');
+  const slug = `${cleanBase}-${Date.now()}`;
 
-  // C. IMÁGENES (CREATE sigue usando inputs individuales por ahora)
-  // Si quisieras usar JSON aquí también, tendrías que actualizar el CreateForm
-  const images = [
-    formData.get('imagen1'),
-    formData.get('imagen2'),
-    formData.get('imagen3')
-  ].filter((img) => typeof img === 'string' && img.trim().length > 0) as string[];
+  // C. IMÁGENES (🟢 CORREGIDO PARA CLOUDINARY)
+  // El formulario nuevo envía "url1,url2,url3" en un string llamado 'images'
+  const imagesString = formData.get('images') as string;
+  const images = imagesString ? imagesString.split(',').filter(Boolean) : [];
 
-  // D. AMENITIES
-  const amenities = formData.getAll('amenities') as string[];
-
-  // E. GUARDAR EN BD
+  // D. GUARDAR EN BD
   try {
     await prisma.properties.create({
       data: {
+        owner_id: userId,
         title,
         slug, 
         description,
         price_per_night: safePrice,
         address,
-        images,
-        owner_id: userId,
-        amenities: amenities,
+        city,
+        images, // Guardamos el array de URLs
+        is_active: true,
       },
     });
     
@@ -76,8 +67,10 @@ export async function createProperty(formData: FormData) {
     throw new Error("Error al guardar en base de datos.");
   }
 
+  // Revalidamos y redirigimos al Dashboard
   revalidatePath('/');
-  redirect('/');
+  revalidatePath('/mis-propiedades');
+  redirect('/mis-propiedades');
 }
 
 // --- 2. FUNCIÓN PARA ACTUALIZAR (UPDATE) ---
@@ -89,11 +82,9 @@ export async function updateProperty(formData: FormData) {
   }
 
   const id = formData.get('id') as string;
-  
-  // Recuperamos el slug original para poder redirigir bien al final
   const currentSlug = formData.get('slug') as string;
 
-  // 🛡️ VERIFICACIÓN DE PROPIEDAD
+  // 🛡️ VERIFICACIÓN
   const existingProperty = await prisma.properties.findUnique({
     where: { id }
   });
@@ -102,9 +93,10 @@ export async function updateProperty(formData: FormData) {
     throw new Error("⛔ Acceso denegado.");
   }
 
-  // DATOS A ACTUALIZAR
+  // DATOS
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
+  const city = formData.get('city') as string; // 🟢 Agregamos Ciudad también aquí
   
   const rawPrice = formData.get('price');
   const price = rawPrice ? parseFloat(rawPrice as string) : 0;
@@ -112,25 +104,26 @@ export async function updateProperty(formData: FormData) {
 
   const address = (formData.get('address') as string) || title; 
 
-  // 🚨 CORRECCIÓN CLAVE: RECIBIR EL PAQUETE JSON DE IMÁGENES
-  // Esto captura el array completo que envía el EditForm nuevo
+  // 🟢 IMÁGENES (Lógica del Edit Form)
+  // El formulario de edición suele enviar JSON, así que mantenemos esa lógica si no la cambiaste
   const imagesJSON = formData.get('imagesJSON') as string;
   let images: string[] = [];
   
   try {
     if (imagesJSON) {
-        // Convertimos el texto "[url1, url2]" de vuelta a un Array real
         images = JSON.parse(imagesJSON);
+    } else {
+        // Fallback por si acaso
+        images = existingProperty.images as string[] || [];
     }
   } catch (error) {
-    console.error("❌ Error al leer el JSON de imágenes:", error);
-    // Si falla, mantenemos las imágenes viejas para no borrar nada por accidente
+    console.error("❌ Error al leer imágenes en Update:", error);
     images = existingProperty.images as string[] || [];
   }
 
   const amenities = formData.getAll('amenities') as string[];
 
-  // ACTUALIZAMOS EN LA BD
+  // UPDATE BD
   await prisma.properties.update({
     where: { id },
     data: {
@@ -138,18 +131,18 @@ export async function updateProperty(formData: FormData) {
       description,
       price_per_night: safePrice,
       address,
-      images: images, // ✅ Guardamos la lista limpia y ordenada
-      amenities: amenities, 
+      city,
+      images, 
+      amenities, 
     },
   });
 
-  // Revalidamos caché
   revalidatePath('/');
+  revalidatePath('/mis-propiedades');
   if (currentSlug) {
     revalidatePath(`/propiedad/${currentSlug}`);
   }
   
-  // Redirigimos
   redirect(`/propiedad/${currentSlug}`);
 }
 
@@ -176,4 +169,5 @@ export async function deleteProperty(formData: FormData) {
   });
 
   revalidatePath('/');
+  revalidatePath('/mis-propiedades');
 }

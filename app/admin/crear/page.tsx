@@ -1,15 +1,31 @@
-import { createProperty } from '@/app/actions'; 
-import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
-import Link from 'next/link';
-import ImageUpload from '@/app/components/UploadWidget'; // Asegúrate de importar esto si ya lo usas, si no, usa el input normal
+"use client"; // 🟢 Obligatorio para usar hooks y Cloudinary Widget
 
-export default async function CreatePropertyPage() {
-  const { userId } = await auth();
+import { useState } from "react";
+import { CldUploadWidget } from "next-cloudinary";
+import { createProperty } from "@/app/actions";
+import Link from "next/link";
 
-  if (!userId) {
-    redirect('/');
-  }
+export default function CreatePropertyPage() {
+  const [images, setImages] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Manejo del envío
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setLoading(true);
+    
+    const formData = new FormData(e.currentTarget);
+    // Agregamos las imágenes al formulario como un string separado por comas
+    formData.set("images", images.join(","));
+
+    try {
+        await createProperty(formData);
+    } catch (error) {
+        console.error("Error al crear:", error);
+        alert("Hubo un error al crear la propiedad. Revisa los datos.");
+        setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -19,7 +35,7 @@ export default async function CreatePropertyPage() {
         <div className="flex items-center justify-between mb-8">
             <div>
                 <h1 className="text-3xl font-extrabold text-gray-900">Publicar tu espacio</h1>
-                <p className="mt-2 text-gray-600">Completa la información para que los huéspedes encuentren tu propiedad.</p>
+                <p className="mt-2 text-gray-600">Completa la información para que los huéspedes te encuentren.</p>
             </div>
             <Link href="/" className="text-sm text-gray-600 hover:text-gray-900 font-medium bg-white px-4 py-2 rounded-full border border-gray-200 shadow-sm transition">
                 ← Cancelar
@@ -28,7 +44,7 @@ export default async function CreatePropertyPage() {
 
         {/* TARJETA DEL FORMULARIO */}
         <div className="bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100">
-          <form action={createProperty} className="p-8 space-y-8">
+          <form onSubmit={handleSubmit} className="p-8 space-y-8">
             
             {/* SECCIÓN 1: DETALLES BÁSICOS */}
             <div className="space-y-6">
@@ -42,19 +58,18 @@ export default async function CreatePropertyPage() {
                             name="title" 
                             required 
                             placeholder="Ej: Cabaña rústica con vista al lago" 
-                            className="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-rose-500 focus:border-transparent outline-none transition bg-white" 
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" 
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-1">Slug (URL única)</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-1">Ciudad</label>
                         <input 
                             type="text" 
-                            name="slug" 
-                            placeholder="ej: cabana-lago-01" 
-                            className="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 bg-gray-50 focus:bg-white transition outline-none focus:ring-2 focus:ring-rose-500" 
+                            name="city" 
+                            placeholder="Ej: Mar del Plata" 
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" 
                         />
-                        <p className="text-xs text-gray-500 mt-1">Sin espacios, usa guiones.</p>
                     </div>
 
                     <div>
@@ -67,7 +82,7 @@ export default async function CreatePropertyPage() {
                                 required 
                                 step="0.01" 
                                 placeholder="0.00" 
-                                className="w-full pl-8 p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-rose-500 outline-none transition bg-white" 
+                                className="w-full pl-8 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" 
                             />
                         </div>
                     </div>
@@ -78,8 +93,8 @@ export default async function CreatePropertyPage() {
                             type="text" 
                             name="address" 
                             required 
-                            placeholder="Calle, Número, Ciudad" 
-                            className="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-rose-500 outline-none transition bg-white" 
+                            placeholder="Calle, Número, Barrio" 
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" 
                         />
                     </div>
 
@@ -89,52 +104,65 @@ export default async function CreatePropertyPage() {
                             name="description" 
                             rows={5} 
                             placeholder="Describe lo que hace especial a este lugar..." 
-                            className="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-rose-500 outline-none transition bg-white"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition"
                         ></textarea>
                     </div>
                 </div>
             </div>
 
-            {/* SECCIÓN 2: IMÁGENES */}
+            {/* 🟢 SECCIÓN 2: IMÁGENES (CON CLOUDINARY) */}
             <div className="space-y-6">
                 <h2 className="text-xl font-bold text-gray-900 border-b pb-2">📸 Galería de Fotos</h2>
-                <p className="text-sm text-gray-500 bg-blue-50 p-3 rounded-lg border border-blue-100 text-blue-800">
-                    💡 <strong>Tip:</strong> Pega las URLs de tus imágenes por ahora.
-                </p>
                 
-                <div className="space-y-3">
-                    <input 
-                        type="url" 
-                        name="imagen1" 
-                        required 
-                        placeholder="URL de la Foto Principal (Portada)" 
-                        className="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-rose-500 outline-none bg-white" 
-                    />
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input 
-                            type="url" 
-                            name="imagen2" 
-                            placeholder="URL Foto 2 (Opcional)" 
-                            className="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-rose-500 outline-none bg-white" 
-                        />
-                        <input 
-                            type="url" 
-                            name="imagen3" 
-                            placeholder="URL Foto 3 (Opcional)" 
-                            className="w-full p-3 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-rose-500 outline-none bg-white" 
-                        />
-                    </div>
+                <div className="space-y-4">
+                    {/* Botón de Carga */}
+                    <CldUploadWidget
+                        uploadPreset="alquileres-mvp" // ⚠️ Revisa que este nombre coincida con tu Cloudinary
+                        onSuccess={(result: any) => {
+                            setImages((prev) => [...prev, result.info.secure_url]);
+                        }}
+                        options={{ maxFiles: 5, sources: ['local', 'camera', 'url'] }}
+                    >
+                        {({ open }) => (
+                            <button
+                                type="button"
+                                onClick={() => open()}
+                                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-medium transition w-full justify-center border border-dashed border-gray-400"
+                            >
+                                📷 Subir Fotos (Cámara o Galería)
+                            </button>
+                        )}
+                    </CldUploadWidget>
+
+                    {/* Previsualización */}
+                    {images.length > 0 && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                            {images.map((url, index) => (
+                                <div key={url} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group">
+                                    <img src={url} alt={`Foto ${index + 1}`} className="w-full h-full object-cover" />
+                                    <button
+                                        type="button"
+                                        onClick={() => setImages(images.filter((_, i) => i !== index))}
+                                        className="absolute top-2 right-2 bg-red-600 text-white p-1 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {images.length === 0 && (
+                        <p className="text-sm text-gray-400 italic text-center">No has subido fotos todavía.</p>
+                    )}
                 </div>
             </div>
 
             {/* SECCIÓN 3: AMENITIES */}
             <div className="space-y-6">
                 <h2 className="text-xl font-bold text-gray-900 border-b pb-2">✨ Comodidades</h2>
-                
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {['Wifi', 'Piscina', 'Aire Acondicionado', 'Cocina', 'Estacionamiento', 'TV', 'Lavadora', 'Mascotas'].map((item) => (
-                        <label key={item} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition bg-white">
+                        <label key={item} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition">
                             <input type="checkbox" name="amenities" value={item} className="w-5 h-5 text-rose-500 border-gray-300 rounded focus:ring-rose-500" />
                             <span className="text-gray-700 font-medium">{item}</span>
                         </label>
@@ -144,9 +172,12 @@ export default async function CreatePropertyPage() {
 
             {/* BOTÓN FINAL */}
             <div className="pt-6 border-t">
-                <button type="submit" 
-                        className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 text-lg">
-                    🚀 Publicar Propiedad
+                <button 
+                    type="submit" 
+                    disabled={loading}
+                    className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-200 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    {loading ? "Publicando..." : "🚀 Publicar Propiedad"}
                 </button>
             </div>
 
