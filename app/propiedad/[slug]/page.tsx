@@ -47,6 +47,17 @@ export default async function PropertyDetailPage({ params }: PageProps) {
     amenitiesList = property.amenities as string[];
   }
 
+  // --- 🟢 LOGICA WHATSAPP 🟢 ---
+  // EDITAR AQUI EL NUMERO: Pon tu número personal aquí (Formato: 54911xxxxxxxx)
+  const defaultPhone = "5491162397733"; 
+  
+  // Si la propiedad tiene un número específico en la BD, usa ese. Si no, usa el tuyo por defecto.
+  const whatsappNumber = property.whatsapp || defaultPhone;
+  
+  const mensaje = `Hola! Vi tu propiedad "${property.title}" en AlquileresMVP y me interesa reservar.`;
+  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(mensaje)}`;
+  // -----------------------------
+
   return (
     <main className="min-h-screen bg-gray-100 py-10 px-4 flex justify-center items-start">
       
@@ -70,7 +81,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
            <ImageCarousel
              images={property.images}
              title={property.title}
-             fit="contain" // 🟢 CAMBIO CLAVE: "contain" para que la foto se vea completa sin recortes
+             fit="contain" 
            />
         </div>
 
@@ -86,7 +97,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
               
               <div className="flex flex-wrap gap-2 mt-2">
                  <span className="text-gray-500 text-sm flex items-center gap-1">
-                    📍 {property.zip_code ? `CP: ${property.zip_code}` : property.address || "Ubicación"}
+                   📍 {property.zip_code ? `CP: ${property.zip_code}` : property.address || "Ubicación"}
                  </span>
               </div>
             </div>
@@ -153,12 +164,21 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                        </div>
                    </div>
                  ) : (
-                   /* VISTA VISITA */
+                   /* VISTA VISITA (Ahora con botón de WhatsApp) */
                    <div className="flex flex-col gap-2">
-                       <button className="w-full bg-rose-600 text-white py-2.5 px-4 rounded-md font-bold text-sm hover:bg-rose-700 transition shadow-sm">
-                         📅 Reservar
-                       </button>
-                       <p className="text-center text-xs text-gray-400">No se te cobrará nada todavía.</p>
+                       <a 
+                         href={whatsappUrl}
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="w-full bg-green-600 text-white py-2.5 px-4 rounded-md font-bold text-sm hover:bg-green-700 transition shadow-sm flex items-center justify-center gap-2"
+                       >
+                         {/* Icono simple de WhatsApp */}
+                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                           <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.694c.93.513 1.733.702 2.805.702 3.182 0 5.768-2.586 5.769-5.766.001-3.181-2.585-5.767-5.768-5.767zm6.768 5.767c-.001 3.756-3.029 6.781-6.768 6.781-1.221 0-2.358-.323-3.322-.882l-3.682.964 1.006-3.578c-.689-1.071-1.053-2.314-1.054-3.579.001-3.725 3.06-6.781 6.769-6.781 3.739 0 6.768 3.029 6.768 6.781z" />
+                         </svg>
+                         Consultar por WhatsApp
+                       </a>
+                       <p className="text-center text-xs text-gray-400">Te pondrás en contacto con el dueño.</p>
                    </div>
                  )}
                </div>

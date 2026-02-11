@@ -3,18 +3,36 @@ import ImageCarousel from '@/app/components/ImageCarousel';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { SignInButton, UserButton, SignedIn, SignedOut } from '@clerk/nextjs'; 
-import DeleteButton from '@/app/components/DeleteButton';   
+import DeleteButton from '@/app/components/DeleteButton';
+import SearchBar from '@/app/components/SearchBar'; 
 
 export const dynamic = "force-dynamic";
 
-// 👇 1. Agregamos 'async' aquí
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams?: Promise<{ query?: string }>;
+}) {
   
+  // 🟢 Leemos la búsqueda de la URL
+  const params = await searchParams;
+  const query = params?.query || "";
+
+  // 🟢 Filtramos la base de datos
   const properties = await prisma.properties.findMany({
+    where: {
+      is_active: true,
+      OR: query
+        ? [
+            { title: { contains: query, mode: "insensitive" } },
+            { city: { contains: query, mode: "insensitive" } },
+            { neighborhood: { contains: query, mode: "insensitive" } },
+          ]
+        : undefined,
+    },
     orderBy: { created_at: 'desc' },
   });
 
-  // 👇 2. Agregamos 'await' aquí (esta es la corrección clave)
   const { userId } = await auth();
 
   return (
@@ -28,24 +46,32 @@ export default async function Home() {
             <div className="bg-rose-500 text-white p-1.5 rounded-lg transform group-hover:rotate-12 transition-transform">
               🏡
             </div>
-            <span className="text-xl font-bold tracking-tight text-gray-800">
+            <span className="text-xl font-bold tracking-tight text-gray-800 hidden md:block">
               Alquileres MVP
             </span>
           </Link>
 
-          {/* MENÚ DERECHO INTELIGENTE */}
-          <div className="flex items-center gap-4">
+          {/* MENÚ DERECHO */}
+          <div className="flex items-center gap-3">
             
-            {/* 🟢 SI ESTÁS LOGUEADO: Muestra Botón Publicar + Avatar */}
             <SignedIn>
+                {/* 🟢 NUEVO: Botón al Dashboard de Mis Propiedades */}
+                <Link 
+                  href="/mis-propiedades" 
+                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium px-4 py-2 rounded-full transition-all text-sm flex items-center gap-2"
+                >
+                  💼 <span className="hidden md:inline">Mis Propiedades</span>
+                </Link>
+
+                {/* Botón Publicar (Desktop) */}
                 <Link 
                   href="/admin/crear" 
                   className="hidden md:flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-full font-medium transition-all shadow-sm hover:shadow-md text-sm"
                 >
-                  <span>+</span> Publicar Propiedad
+                  <span>+</span> Publicar
                 </Link>
                 
-                {/* Botón Móvil */}
+                {/* Botón Publicar (Móvil) */}
                 <Link 
                   href="/admin/crear" 
                   className="md:hidden bg-rose-500 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-sm"
@@ -53,12 +79,11 @@ export default async function Home() {
                   +
                 </Link>
 
-                <div className="border-l pl-4 ml-2 border-gray-200">
+                <div className="border-l pl-3 ml-1 border-gray-200">
                   <UserButton afterSignOutUrl="/"/>
                 </div>
             </SignedIn>
 
-            {/* 🔴 SI NO ESTÁS LOGUEADO: Muestra Botón Iniciar Sesión */}
             <SignedOut>
               <SignInButton mode="modal">
                 <button className="text-gray-600 hover:text-gray-900 font-medium text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
@@ -74,15 +99,25 @@ export default async function Home() {
       {/* --- CONTENIDO --- */}
       <main className="container mx-auto px-4 py-8">
         
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-800">Explora alojamientos únicos</h1>
-          <p className="text-gray-500">Encuentra el lugar perfecto para tu próxima escapada.</p>
+        {/* SECCIÓN HERO + BUSCADOR */}
+        <div className="mb-10 text-center md:text-left md:flex md:items-end md:justify-between gap-4">
+          <div className="mb-4 md:mb-0">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Explora alojamientos únicos</h1>
+            <p className="text-gray-500">
+              {query 
+                ? `Resultados para: "${query}"` 
+                : "Encuentra el lugar perfecto para tu próxima escapada."}
+            </p>
+          </div>
+          
+          <div className="w-full md:w-auto md:min-w-[400px]">
+             <SearchBar />
+          </div>
         </div>
       
         {properties.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {properties.map((prop) => {
-              // Verificamos si el usuario actual es el dueño
               const isOwner = userId && prop.owner_id === userId;
 
               return (
@@ -137,20 +172,32 @@ export default async function Home() {
             })}
           </div>
         ) : (
-          /* ESTADO VACÍO */
           <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-100">
-            <div className="text-6xl mb-4">🏡</div>
-            <h3 className="text-xl font-bold text-gray-800">Aún no hay propiedades</h3>
-            <p className="text-gray-500 mb-6">Sé el primero en publicar tu espacio.</p>
+            <div className="text-6xl mb-4">🔍</div>
+            <h3 className="text-xl font-bold text-gray-800">
+              {query ? `No encontramos nada con "${query}"` : "Aún no hay propiedades"}
+            </h3>
+            <p className="text-gray-500 mb-6">
+              {query ? "Intenta con otra palabra clave." : "Sé el primero en publicar tu espacio."}
+            </p>
             
-            {/* Botón también aquí, protegido con SignedIn */}
-            <SignedIn>
-              <Link href="/admin/crear" className="text-rose-600 font-bold hover:underline bg-rose-50 px-4 py-2 rounded-lg">
-                Publicar ahora
-              </Link>
-            </SignedIn>
+            <div className="flex justify-center gap-4">
+                {query && (
+                    <Link href="/" className="text-gray-600 font-medium hover:underline px-4 py-2 border rounded-lg">
+                        Borrar filtros
+                    </Link>
+                )}
+                <SignedIn>
+                  <Link href="/admin/crear" className="text-rose-600 font-bold hover:underline bg-rose-50 px-4 py-2 rounded-lg">
+                    Publicar ahora
+                  </Link>
+                </SignedIn>
+            </div>
+            
             <SignedOut>
+                <div className="mt-4">
                   <span className="text-gray-400">Inicia sesión para comenzar</span>
+                </div>
             </SignedOut>
           </div>
         )}
@@ -158,4 +205,3 @@ export default async function Home() {
     </div>
   );
 }
-// Forzando actualización de Vercel

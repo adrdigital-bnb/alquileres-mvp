@@ -17,18 +17,18 @@ model blocked_dates {
 }
 
 model bookings {
-  id            String          @id @default(uuid())
-  property_id   String          // Le saqué @db.Uuid
-  guest_id      String          // Le saqué @db.Uuid
-  check_in_date DateTime        @db.Date
-  check_out_date DateTime       @db.Date
-  total_price   Decimal         @db.Decimal(10, 2)
-  status        booking_status? @default(PENDING)
-  payment_id    String?         @db.VarChar(255)
-  created_at    DateTime?       @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime?       @default(now()) @db.Timestamptz(6)
-  users         users           @relation(fields: [guest_id], references: [id], onUpdate: NoAction)
-  properties    properties      @relation(fields: [property_id], references: [id], onUpdate: NoAction)
+  id             String          @id @default(uuid())
+  property_id    String          // Le saqué @db.Uuid
+  guest_id       String          // Le saqué @db.Uuid
+  check_in_date  DateTime        @db.Date
+  check_out_date DateTime        @db.Date
+  total_price    Decimal         @db.Decimal(10, 2)
+  status         booking_status? @default(PENDING)
+  payment_id     String?         @db.VarChar(255)
+  created_at     DateTime?       @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime?       @default(now()) @db.Timestamptz(6)
+  users          users           @relation(fields: [guest_id], references: [id], onUpdate: NoAction)
+  properties     properties      @relation(fields: [property_id], references: [id], onUpdate: NoAction)
 
   @@index([property_id, check_in_date, check_out_date], map: "idx_bookings_dates")
 }
@@ -50,6 +50,7 @@ model properties {
   bedrooms        Int?            @default(1)
   bathrooms       Int?            @default(1)
   amenities       Json?           @default("[]")
+  whatsapp        String?         @db.VarChar(50) // NUEVO CAMPO: Para el botón directo de reserva (Formato ideal: 5491162397733)
   images          String[]        @default([])
   is_active       Boolean?        @default(true)
   created_at      DateTime?       @default(now()) @db.Timestamptz(6)
@@ -66,8 +67,8 @@ model users {
   id            String      @id @default(uuid())
   clerkId       String      @unique 
   email         String      @unique @db.VarChar(255)
-  password_hash String?     @db.VarChar(255) // Lo puse opcional (?) porque con Clerk a veces no guardas pass local
-  full_name     String?     @db.VarChar(100) // Lo puse opcional
+  password_hash String?     @db.VarChar(255) 
+  full_name     String?     @db.VarChar(100) 
   phone         String?     @db.VarChar(50)
   role          user_role?  @default(GUEST)
   avatar_url    String?
