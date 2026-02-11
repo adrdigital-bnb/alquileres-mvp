@@ -35,7 +35,7 @@ export async function createProperty(formData: FormData) {
   // Validación de Dirección
   const address = (formData.get('address') as string) || "Ubicación por confirmar";
 
-  // B. GENERACIÓN DE SLUG ROBUSTA (Fix para Vercel)
+  // B. GENERACIÓN DE SLUG ROBUSTA
   let slug = formData.get('slug') as string;
   
   // Si el usuario escribió un slug, lo limpiamos. Si no, lo creamos desde el título.
@@ -45,7 +45,8 @@ export async function createProperty(formData: FormData) {
   // Agregamos timestamp para asegurar que sea único
   slug = `${cleanBase}-${Date.now()}`;
 
-  // C. IMÁGENES (Recoge imagen1, 2 y 3)
+  // C. IMÁGENES (CREATE sigue usando inputs individuales por ahora)
+  // Si quisieras usar JSON aquí también, tendrías que actualizar el CreateForm
   const images = [
     formData.get('imagen1'),
     formData.get('imagen2'),
@@ -109,19 +110,27 @@ export async function updateProperty(formData: FormData) {
   const price = rawPrice ? parseFloat(rawPrice as string) : 0;
   const safePrice = isNaN(price) ? 0 : price;
 
-  const address = (formData.get('address') as string) || title; // Fallback simple
+  const address = (formData.get('address') as string) || title; 
 
-  // 🚨 AQUÍ ES DONDE FALLABA LA EDICIÓN DE FOTOS
-  // Filtramos estrictamente para que solo pasen strings con contenido real
-  const images = [
-    formData.get('imagen1'),
-    formData.get('imagen2'),
-    formData.get('imagen3')
-  ].filter((img) => typeof img === 'string' && img.trim().length > 0) as string[];
+  // 🚨 CORRECCIÓN CLAVE: RECIBIR EL PAQUETE JSON DE IMÁGENES
+  // Esto captura el array completo que envía el EditForm nuevo
+  const imagesJSON = formData.get('imagesJSON') as string;
+  let images: string[] = [];
+  
+  try {
+    if (imagesJSON) {
+        // Convertimos el texto "[url1, url2]" de vuelta a un Array real
+        images = JSON.parse(imagesJSON);
+    }
+  } catch (error) {
+    console.error("❌ Error al leer el JSON de imágenes:", error);
+    // Si falla, mantenemos las imágenes viejas para no borrar nada por accidente
+    images = existingProperty.images as string[] || [];
+  }
 
   const amenities = formData.getAll('amenities') as string[];
 
-  // ACTUALIZAMOS
+  // ACTUALIZAMOS EN LA BD
   await prisma.properties.update({
     where: { id },
     data: {
@@ -129,7 +138,7 @@ export async function updateProperty(formData: FormData) {
       description,
       price_per_night: safePrice,
       address,
-      images: images, // ¡Ahora sí guarda el array actualizado!
+      images: images, // ✅ Guardamos la lista limpia y ordenada
       amenities: amenities, 
     },
   });
@@ -140,7 +149,7 @@ export async function updateProperty(formData: FormData) {
     revalidatePath(`/propiedad/${currentSlug}`);
   }
   
-  // Redirigimos a la página de la propiedad
+  // Redirigimos
   redirect(`/propiedad/${currentSlug}`);
 }
 

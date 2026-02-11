@@ -27,12 +27,12 @@ export default function EditForm({ property }: { property: any }) {
     }
   };
 
-  // Función para borrar una foto de la lista visual (no de Cloudinary, solo del formulario)
+  // Función para borrar una foto de la lista visual
   const removeImage = (indexToRemove: number) => {
     setUploadedImages(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  // Limpieza de amenities (igual que antes)
+  // Limpieza de amenities
   let currentAmenities: string[] = [];
   if (Array.isArray(property.amenities)) {
     currentAmenities = property.amenities.map((item: any) => 
@@ -50,6 +50,7 @@ export default function EditForm({ property }: { property: any }) {
       </div>
 
       <form action={updateProperty} className="flex flex-col gap-4">
+        {/* ID y Slug (ocultos) */}
         <input type="hidden" name="id" value={property.id} />
         <input type="hidden" name="slug" value={property.slug || ""} />
 
@@ -110,12 +111,12 @@ export default function EditForm({ property }: { property: any }) {
                 )}
             </CldUploadWidget>
 
-            {/* Lista de fotos */}
+            {/* Lista de fotos visual */}
             <div className="grid grid-cols-3 gap-2 mb-2">
                 {uploadedImages.map((url, index) => (
                     <div key={index} className="relative group aspect-square">
                         <img src={url} className="w-full h-full object-cover rounded border" />
-                        {/* Botón X para borrar visualmente */}
+                        {/* Botón X para borrar */}
                         <button 
                             type="button"
                             onClick={() => removeImage(index)}
@@ -127,10 +128,13 @@ export default function EditForm({ property }: { property: any }) {
                 ))}
             </div>
             
-            {/* INPUTS OCULTOS (Esto es lo que se envía a la DB) */}
-            <input type="hidden" name="imagen1" value={uploadedImages[0] || ""} />
-            <input type="hidden" name="imagen2" value={uploadedImages[1] || ""} />
-            <input type="hidden" name="imagen3" value={uploadedImages[2] || ""} />
+            {/* 🚨 CORRECCIÓN FINAL: Input Oculto JSON */}
+            {/* Enviamos todo el array como un string para que el servidor no pierda nada */}
+            <input 
+                type="hidden" 
+                name="imagesJSON" 
+                value={JSON.stringify(uploadedImages)} 
+            />
         </div>
 
         <button type="submit" className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition-all shadow-md">
