@@ -115,7 +115,7 @@ export default function CreatePropertyPage() {
                 
                 <div className="space-y-4">
                     <CldUploadWidget
-                        uploadPreset="alquileres-mvp" // ⚠️ Chequea que coincida con tu preset
+                        uploadPreset="alquileres_cloud" // ⚠️ Chequea que coincida con tu preset
                         onSuccess={(result: any) => {
                             setImages((prev) => [...prev, result.info.secure_url]);
                         }}
