@@ -1,4 +1,4 @@
-"use client"; // 🟢 Obligatorio para usar hooks y Cloudinary Widget
+"use client";
 
 import { useState } from "react";
 import { CldUploadWidget } from "next-cloudinary";
@@ -15,7 +15,6 @@ export default function CreatePropertyPage() {
     setLoading(true);
     
     const formData = new FormData(e.currentTarget);
-    // Agregamos las imágenes al formulario como un string separado por comas
     formData.set("images", images.join(","));
 
     try {
@@ -58,7 +57,7 @@ export default function CreatePropertyPage() {
                             name="title" 
                             required 
                             placeholder="Ej: Cabaña rústica con vista al lago" 
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" 
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition bg-white text-gray-900 placeholder-gray-400" 
                         />
                     </div>
 
@@ -68,7 +67,7 @@ export default function CreatePropertyPage() {
                             type="text" 
                             name="city" 
                             placeholder="Ej: Mar del Plata" 
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" 
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition bg-white text-gray-900 placeholder-gray-400" 
                         />
                     </div>
 
@@ -82,7 +81,7 @@ export default function CreatePropertyPage() {
                                 required 
                                 step="0.01" 
                                 placeholder="0.00" 
-                                className="w-full pl-8 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" 
+                                className="w-full pl-8 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition bg-white text-gray-900 placeholder-gray-400" 
                             />
                         </div>
                     </div>
@@ -94,7 +93,7 @@ export default function CreatePropertyPage() {
                             name="address" 
                             required 
                             placeholder="Calle, Número, Barrio" 
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition" 
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition bg-white text-gray-900 placeholder-gray-400" 
                         />
                     </div>
 
@@ -104,20 +103,19 @@ export default function CreatePropertyPage() {
                             name="description" 
                             rows={5} 
                             placeholder="Describe lo que hace especial a este lugar..." 
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition"
+                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-rose-500 outline-none transition bg-white text-gray-900 placeholder-gray-400"
                         ></textarea>
                     </div>
                 </div>
             </div>
 
-            {/* 🟢 SECCIÓN 2: IMÁGENES (CON CLOUDINARY) */}
+            {/* SECCIÓN 2: IMÁGENES (CON CLOUDINARY) */}
             <div className="space-y-6">
                 <h2 className="text-xl font-bold text-gray-900 border-b pb-2">📸 Galería de Fotos</h2>
                 
                 <div className="space-y-4">
-                    {/* Botón de Carga */}
                     <CldUploadWidget
-                        uploadPreset="alquileres-mvp" // ⚠️ Revisa que este nombre coincida con tu Cloudinary
+                        uploadPreset="alquileres-mvp" // ⚠️ Chequea que coincida con tu preset
                         onSuccess={(result: any) => {
                             setImages((prev) => [...prev, result.info.secure_url]);
                         }}
@@ -162,7 +160,7 @@ export default function CreatePropertyPage() {
                 <h2 className="text-xl font-bold text-gray-900 border-b pb-2">✨ Comodidades</h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {['Wifi', 'Piscina', 'Aire Acondicionado', 'Cocina', 'Estacionamiento', 'TV', 'Lavadora', 'Mascotas'].map((item) => (
-                        <label key={item} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition">
+                        <label key={item} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer transition bg-white">
                             <input type="checkbox" name="amenities" value={item} className="w-5 h-5 text-rose-500 border-gray-300 rounded focus:ring-rose-500" />
                             <span className="text-gray-700 font-medium">{item}</span>
                         </label>
