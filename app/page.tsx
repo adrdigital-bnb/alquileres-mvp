@@ -33,7 +33,18 @@ export default async function Home({
     orderBy: { created_at: 'desc' },
   });
 
-  const { userId } = await auth();
+  // 1. Obtenemos el ID de Clerk
+  const { userId: clerkId } = await auth();
+  
+  // 2. 🚨 EL ARREGLO: Buscamos tu ID real en la base de datos
+  let dbUserId = null;
+  if (clerkId) {
+    const dbUser = await prisma.users.findUnique({
+      where: { clerkId: clerkId },
+      select: { id: true } // Solo traemos el ID para ser súper rápidos
+    });
+    dbUserId = dbUser?.id;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
@@ -55,7 +66,6 @@ export default async function Home({
           <div className="flex items-center gap-3">
             
             <SignedIn>
-                {/* 🟢 NUEVO: Botón al Dashboard de Mis Propiedades */}
                 <Link 
                   href="/mis-propiedades" 
                   className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium px-4 py-2 rounded-full transition-all text-sm flex items-center gap-2"
@@ -63,7 +73,6 @@ export default async function Home({
                   💼 <span className="hidden md:inline">Mis Propiedades</span>
                 </Link>
 
-                {/* Botón Publicar (Desktop) */}
                 <Link 
                   href="/admin/crear" 
                   className="hidden md:flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-full font-medium transition-all shadow-sm hover:shadow-md text-sm"
@@ -71,7 +80,6 @@ export default async function Home({
                   <span>+</span> Publicar
                 </Link>
                 
-                {/* Botón Publicar (Móvil) */}
                 <Link 
                   href="/admin/crear" 
                   className="md:hidden bg-rose-500 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-sm"
@@ -118,7 +126,9 @@ export default async function Home({
         {properties.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {properties.map((prop) => {
-              const isOwner = userId && prop.owner_id === userId;
+              
+              // 🚨 ACÁ USAMOS EL ID DE LA DB, NO EL DE CLERK
+              const isOwner = dbUserId && prop.owner_id === dbUserId;
 
               return (
                 <div key={prop.id} className="group bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 flex flex-col">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import DeleteButton from "@/app/components/DeleteButton";
+import { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +24,34 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
-export default async function PropertyDetailPage({ params }: PageProps) {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-
-  // Decodificamos la URL para que la "ñ" se lea bien
   const decodedSlug = decodeURIComponent(slug);
 
-  // 1. Buscamos usando el slug arreglado
+  const property = await prisma.properties.findUnique({
+    where: { slug: decodedSlug },
+    select: { title: true, description: true, images: true }
+  });
+
+  if (!property) return { title: "Propiedad no encontrada" };
+
+  const mainImage = Array.isArray(property.images) && property.images.length > 0 
+    ? (property.images[0] as string) 
+    : "/placeholder.jpg";
+
+  return {
+    title: `${property.title} | AlquileresMVP`,
+    description: property.description?.substring(0, 150) || "Detalles de la propiedad",
+    openGraph: {
+      images: [mainImage],
+    },
+  };
+}
+
+export default async function PropertyDetailPage({ params }: PageProps) {
+  const { slug } = await params;
+  const decodedSlug = decodeURIComponent(slug);
+
   const property = await prisma.properties.findUnique({
     where: { slug: decodedSlug },
   });
@@ -38,30 +60,33 @@ export default async function PropertyDetailPage({ params }: PageProps) {
     return notFound();
   }
 
-  // 2. Seguridad: Verificamos si eres el dueño
   const { userId } = await auth();
   const isOwner = userId && property.owner_id === userId;
 
-  let amenitiesList: string[] = [];
-  if (Array.isArray(property.amenities)) {
-    amenitiesList = property.amenities as string[];
-  }
+  // Normalización de Arrays
+  const amenitiesList = Array.isArray(property.amenities) 
+    ? (property.amenities as string[]) 
+    : [];
 
-  // --- 🟢 LOGICA WHATSAPP 🟢 ---
-  // EDITAR AQUI EL NUMERO: Pon tu número personal aquí (Formato: 54911xxxxxxxx)
+  const imagesList = Array.isArray(property.images)
+    ? (property.images as string[])
+    : [];
+
+  // --- LOGICA WHATSAPP ---
   const defaultPhone = "5491162397733"; 
-  
-  // Si la propiedad tiene un número específico en la BD, usa ese. Si no, usa el tuyo por defecto.
   const whatsappNumber = property.whatsapp || defaultPhone;
-  
   const mensaje = `Hola! Vi tu propiedad "${property.title}" en AlquileresMVP y me interesa reservar.`;
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(mensaje)}`;
-  // -----------------------------
+  
+  // --- LOGICA MAPA ---
+  // Construimos la dirección para el mapa. Agregamos "Argentina" o la localidad para mayor precisión.
+  const mapAddress = property.address 
+    ? `${property.address}, ${property.zip_code || ''}, Argentina`
+    : null;
 
   return (
     <main className="min-h-screen bg-gray-100 py-10 px-4 flex justify-center items-start">
       
-      {/* CONTENEDOR CENTRAL COMPACTO */}
       <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
 
         {/* Barra superior */}
@@ -76,10 +101,10 @@ export default async function PropertyDetailPage({ params }: PageProps) {
             )}
         </div>
 
-        {/* IMAGEN: Altura controlada y fit="contain" para que se vea entera */}
+        {/* IMAGEN: Carousel */}
         <div className="h-[250px] md:h-[320px] w-full relative bg-gray-100 flex items-center justify-center">
            <ImageCarousel
-             images={property.images}
+             images={imagesList}
              title={property.title}
              fit="contain" 
            />
@@ -88,13 +113,12 @@ export default async function PropertyDetailPage({ params }: PageProps) {
         {/* CUERPO DE LA TARJETA */}
         <div className="p-6 md:p-8">
           
-          {/* Encabezado: Título y Precio */}
+          {/* Encabezado */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div className="flex-1">
               <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
                 {property.title}
               </h1>
-              
               <div className="flex flex-wrap gap-2 mt-2">
                  <span className="text-gray-500 text-sm flex items-center gap-1">
                    📍 {property.zip_code ? `CP: ${property.zip_code}` : property.address || "Ubicación"}
@@ -102,7 +126,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* Precio */}
             <div className="text-right">
               <span className="block text-3xl font-bold text-rose-600">
                 ${property.price_per_night.toString()}
@@ -115,8 +138,10 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
-            {/* Columna Izquierda: Detalles */}
-            <div className="md:col-span-2 flex flex-col gap-6">
+            {/* Columna Izquierda: Detalles + MAPA */}
+            <div className="md:col-span-2 flex flex-col gap-8">
+               
+               {/* Descripción */}
                <div>
                 <h2 className="text-lg font-bold mb-2 text-gray-900">Sobre este lugar</h2>
                 <p className="text-gray-600 leading-relaxed whitespace-pre-line text-sm md:text-base">
@@ -124,10 +149,9 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                 </p>
               </div>
 
+              {/* Comodidades */}
               <div>
-                <h2 className="text-lg font-bold mb-3 text-gray-900">
-                  Comodidades
-                </h2>
+                <h2 className="text-lg font-bold mb-3 text-gray-900">Comodidades</h2>
                 {amenitiesList.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {amenitiesList.map((amenity, index) => (
@@ -145,13 +169,38 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                   <p className="text-gray-400 italic text-sm">No especificadas.</p>
                 )}
               </div>
+
+              {/* 🟢 MAPA DE UBICACIÓN 🟢 */}
+              <div>
+                <h2 className="text-lg font-bold mb-3 text-gray-900">Ubicación</h2>
+                <div className="w-full h-[250px] bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative">
+                  {mapAddress ? (
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      scrolling="no"
+                      marginHeight={0}
+                      marginWidth={0}
+                      title="Mapa de la propiedad"
+                      // Usamos la API pública de Google Maps para embed simple
+                      src={`https://maps.google.com/maps?q=${encodeURIComponent(mapAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                      className="absolute inset-0"
+                    ></iframe>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+                      📍 Dirección exacta no disponible para el mapa.
+                    </div>
+                  )}
+                </div>
+              </div>
+
             </div>
 
-            {/* Columna Derecha: Panel de Acción Compacto */}
+            {/* Columna Derecha: Panel de Acción */}
             <div className="md:col-span-1">
-               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 sticky top-4">
                  {isOwner ? (
-                   /* VISTA DUEÑO */
                    <div className="flex flex-col gap-2">
                        <Link
                          href={`/propiedades/editar/${property.id}`}
@@ -164,7 +213,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                        </div>
                    </div>
                  ) : (
-                   /* VISTA VISITA (Ahora con botón de WhatsApp) */
                    <div className="flex flex-col gap-2">
                        <a 
                          href={whatsappUrl}
@@ -172,7 +220,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                          rel="noopener noreferrer"
                          className="w-full bg-green-600 text-white py-2.5 px-4 rounded-md font-bold text-sm hover:bg-green-700 transition shadow-sm flex items-center justify-center gap-2"
                        >
-                         {/* Icono simple de WhatsApp */}
                          <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.694c.93.513 1.733.702 2.805.702 3.182 0 5.768-2.586 5.769-5.766.001-3.181-2.585-5.767-5.768-5.767zm6.768 5.767c-.001 3.756-3.029 6.781-6.768 6.781-1.221 0-2.358-.323-3.322-.882l-3.682.964 1.006-3.578c-.689-1.071-1.053-2.314-1.054-3.579.001-3.725 3.06-6.781 6.769-6.781 3.739 0 6.768 3.029 6.768 6.781z" />
                          </svg>
