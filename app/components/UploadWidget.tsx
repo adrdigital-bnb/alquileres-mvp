@@ -20,7 +20,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({
   return (
     <CldUploadWidget 
       onSuccess={handleUpload} 
-      uploadPreset={process.env.NEXT_PUBLIC_CLOUDINARY_PRESET} // Asegúrate que esto esté en tu .env
+      // 🟢 ACÁ ESTÁ EL ARREGLO MAESTRO
+      uploadPreset="alquileres_cloud" 
       options={{ maxFiles: 1 }}
     >
       {({ open }) => {
