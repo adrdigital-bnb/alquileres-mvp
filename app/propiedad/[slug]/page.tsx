@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import DeleteButton from "@/app/components/DeleteButton";
+import BookingCalendar from "@/app/components/BookingCalendar";
 import { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -72,14 +73,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
     ? (property.images as string[])
     : [];
 
-  // --- LOGICA WHATSAPP ---
-  const defaultPhone = "5491162397733"; 
-  const whatsappNumber = property.whatsapp || defaultPhone;
-  const mensaje = `Hola! Vi tu propiedad "${property.title}" en AlquileresMVP y me interesa reservar.`;
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(mensaje)}`;
-  
-  // --- LOGICA MAPA ---
-  // Construimos la dirección para el mapa. Agregamos "Argentina" o la localidad para mayor precisión.
+  // --- LÓGICA MAPA ---
   const mapAddress = property.address 
     ? `${property.address}, ${property.zip_code || ''}, Argentina`
     : null;
@@ -87,7 +81,8 @@ export default async function PropertyDetailPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-gray-100 py-10 px-4 flex justify-center items-start">
       
-      <div className="w-full max-w-3xl bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+      {/* 🟢 CAMBIO 1: Aumentamos el max-w a 6xl para dar más aire en pantallas grandes */}
+      <div className="w-full max-w-6xl bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
 
         {/* Barra superior */}
         <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center bg-white">
@@ -102,11 +97,11 @@ export default async function PropertyDetailPage({ params }: PageProps) {
         </div>
 
         {/* IMAGEN: Carousel */}
-        <div className="h-[250px] md:h-[320px] w-full relative bg-gray-100 flex items-center justify-center">
+        <div className="h-[300px] md:h-[450px] w-full relative bg-gray-100 flex items-center justify-center">
            <ImageCarousel
              images={imagesList}
              title={property.title}
-             fit="contain" 
+             fit="cover" // 🟢 Probemos 'cover' para que se vea más impactante
            />
         </div>
 
@@ -114,53 +109,45 @@ export default async function PropertyDetailPage({ params }: PageProps) {
         <div className="p-6 md:p-8">
           
           {/* Encabezado */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-            <div className="flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
+          <div className="flex flex-col gap-2 mb-6">
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
                 {property.title}
               </h1>
-              <div className="flex flex-wrap gap-2 mt-2">
+              <div className="flex flex-wrap gap-2">
                  <span className="text-gray-500 text-sm flex items-center gap-1">
-                   📍 {property.zip_code ? `CP: ${property.zip_code}` : property.address || "Ubicación"}
+                   📍 {property.zip_code ? `${property.city}, CP ${property.zip_code}` : property.address || "Ubicación"}
                  </span>
               </div>
-            </div>
-
-            <div className="text-right">
-              <span className="block text-3xl font-bold text-rose-600">
-                ${property.price_per_night.toString()}
-              </span>
-              <span className="text-gray-400 font-medium text-xs">ARS / noche</span>
-            </div>
           </div>
 
           <hr className="my-6 border-gray-100" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {/* 🟢 CAMBIO 2: ESTRUCTURA FLEXBOX. La magia ocurre aquí. */}
+          <div className="flex flex-col lg:flex-row gap-12 relative items-start">
 
-            {/* Columna Izquierda: Detalles + MAPA */}
-            <div className="md:col-span-2 flex flex-col gap-8">
+            {/* Columna Izquierda: Contenido Principal (se estira) */}
+            <div className="flex-1 flex flex-col gap-10">
                
                {/* Descripción */}
                <div>
-                <h2 className="text-lg font-bold mb-2 text-gray-900">Sobre este lugar</h2>
-                <p className="text-gray-600 leading-relaxed whitespace-pre-line text-sm md:text-base">
+                <h2 className="text-xl font-bold mb-3 text-gray-900">Sobre este lugar</h2>
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line text-base">
                   {property.description || "Sin descripción detallada."}
                 </p>
               </div>
 
               {/* Comodidades */}
               <div>
-                <h2 className="text-lg font-bold mb-3 text-gray-900">Comodidades</h2>
+                <h2 className="text-xl font-bold mb-4 text-gray-900">Lo que ofrece este lugar</h2>
                 {amenitiesList.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid grid-cols-2 gap-4">
                     {amenitiesList.map((amenity, index) => (
-                      <div key={index} className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 rounded-md border border-gray-100">
-                        <span className="text-base">
-                          {amenityIcons[amenity.toLowerCase().replace(/\s/g, '_')] || "•"}
+                      <div key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition">
+                        <span className="text-2xl">
+                          {amenityIcons[amenity.toLowerCase().replace(/\s/g, '_')]?.split(' ')[0] || "•"}
                         </span>
-                        <span className="text-gray-700 text-sm font-medium capitalize">
-                          {amenity}
+                        <span className="text-gray-700 text-base font-medium capitalize">
+                          {amenity.replace(/_/g, ' ')}
                         </span>
                       </div>
                     ))}
@@ -170,10 +157,10 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                 )}
               </div>
 
-              {/* 🟢 MAPA DE UBICACIÓN 🟢 */}
+              {/* MAPA DE UBICACIÓN */}
               <div>
-                <h2 className="text-lg font-bold mb-3 text-gray-900">Ubicación</h2>
-                <div className="w-full h-[250px] bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative">
+                <h2 className="text-xl font-bold mb-4 text-gray-900">A dónde vas a ir</h2>
+                <div className="w-full h-[400px] bg-gray-100 rounded-xl overflow-hidden border border-gray-200 relative shadow-sm">
                   {mapAddress ? (
                     <iframe
                       width="100%"
@@ -183,7 +170,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                       marginHeight={0}
                       marginWidth={0}
                       title="Mapa de la propiedad"
-                      // Usamos la API pública de Google Maps para embed simple
                       src={`https://maps.google.com/maps?q=${encodeURIComponent(mapAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                       className="absolute inset-0"
                     ></iframe>
@@ -193,40 +179,33 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                     </div>
                   )}
                 </div>
+                <p className="text-gray-500 text-sm mt-3 ml-1">{property.address}, {property.city}, {property.province}</p>
               </div>
 
             </div>
 
-            {/* Columna Derecha: Panel de Acción */}
-            <div className="md:col-span-1">
-               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 sticky top-4">
+            {/* 🟢 CAMBIO 3: Columna Derecha (SIDEBAR FIJO). Ancho forzado de 400px en desktop */}
+            <div className="w-full lg:w-[400px] shrink-0 relative">
+               <div className="sticky top-8">
                  {isOwner ? (
-                   <div className="flex flex-col gap-2">
+                   <div className="bg-white p-6 rounded-xl shadow-xl border border-gray-200 flex flex-col gap-3">
+                       <h3 className="font-bold text-lg mb-2">Administrar Propiedad</h3>
                        <Link
                          href={`/propiedades/editar/${property.id}`}
-                         className="w-full bg-white text-gray-700 border border-gray-300 py-2 px-3 rounded-md font-bold text-center hover:bg-gray-100 text-sm transition"
+                         className="w-full bg-white text-gray-700 border-2 border-gray-300 py-2.5 px-4 rounded-lg font-bold text-center hover:bg-gray-50 hover:border-gray-400 transition flex items-center justify-center gap-2"
                        >
-                         ✏️ Editar
+                         ✏️ Editar detalles y fotos
                        </Link>
-                       <div className="w-full">
+                       <div className="w-full mt-2">
                            <DeleteButton propertyId={property.id} />
                        </div>
                    </div>
                  ) : (
-                   <div className="flex flex-col gap-2">
-                       <a 
-                         href={whatsappUrl}
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         className="w-full bg-green-600 text-white py-2.5 px-4 rounded-md font-bold text-sm hover:bg-green-700 transition shadow-sm flex items-center justify-center gap-2"
-                       >
-                         <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                           <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.592 2.654-.694c.93.513 1.733.702 2.805.702 3.182 0 5.768-2.586 5.769-5.766.001-3.181-2.585-5.767-5.768-5.767zm6.768 5.767c-.001 3.756-3.029 6.781-6.768 6.781-1.221 0-2.358-.323-3.322-.882l-3.682.964 1.006-3.578c-.689-1.071-1.053-2.314-1.054-3.579.001-3.725 3.06-6.781 6.769-6.781 3.739 0 6.768 3.029 6.768 6.781z" />
-                         </svg>
-                         Consultar por WhatsApp
-                       </a>
-                       <p className="text-center text-xs text-gray-400">Te pondrás en contacto con el dueño.</p>
-                   </div>
+                   // 🟢 El calendario ahora tiene espacio garantizado
+                   <BookingCalendar 
+                     pricePerNight={Number(property.price_per_night)} 
+                     propertyTitle={property.title} 
+                   />
                  )}
                </div>
             </div>

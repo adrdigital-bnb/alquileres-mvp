@@ -128,7 +128,7 @@ export async function updateProperty(formData: FormData) {
   const dbUser = await prisma.users.findUnique({ where: { clerkId } });
   if (!dbUser) throw new Error("Usuario no encontrado en la DB local.");
 
-  // Buscamos el ID de la propiedad (soporta que venga como 'id' o 'propertyId')
+  // Buscamos el ID de la propiedad
   const propertyId = (formData.get('id') as string) || (formData.get('propertyId') as string);
 
   if (!propertyId) {
@@ -146,11 +146,39 @@ export async function updateProperty(formData: FormData) {
   const description = formData.get('description') as string;
   const address = formData.get('address') as string;
   const city = formData.get('city') as string;
-  const province = (formData.get('province') as string) || "Buenos Aires"; // 🟢 ACÁ ATRAPAMOS LA PROVINCIA
+  const province = (formData.get('province') as string) || "Buenos Aires";
   const zip_code = formData.get('zip_code') as string;
   
   const rawPrice = formData.get('price');
   const price = rawPrice ? parseFloat(rawPrice as string) : existingProperty.price_per_night;
+
+  // 🟢 SOLUCIÓN: RECOLECTAR IMÁGENES Y COMODIDADES
+  const amenities = formData.getAll('amenities') as string[];
+  
+  const images: string[] = [];
+  const img1 = formData.get('imagen1') as string;
+  const img2 = formData.get('imagen2') as string;
+  const img3 = formData.get('imagen3') as string;
+
+  if (img1) images.push(img1);
+  if (img2) images.push(img2);
+  if (img3) images.push(img3);
+
+  // También atrapamos si mandaste un array de inputs ocultos con name="images"
+  const hiddenImages = formData.getAll('images') as string[];
+  hiddenImages.forEach(img => {
+    if (!images.includes(img)) images.push(img);
+  });
+
+  // PREVENCIÓN: Si no subió fotos nuevas, le dejamos las que ya tenía en la base de datos
+  const finalImages = images.length > 0 
+    ? images 
+    : (Array.isArray(existingProperty.images) ? existingProperty.images as string[] : []);
+
+  // PREVENCIÓN: Mismo trato para las comodidades
+  const finalAmenities = amenities.length > 0 
+    ? amenities 
+    : (Array.isArray(existingProperty.amenities) ? existingProperty.amenities as string[] : []);
 
   // Actualizar en base de datos
   try {
@@ -162,8 +190,10 @@ export async function updateProperty(formData: FormData) {
         price_per_night: price,
         address,
         city,
-        province, // 🟢 ACÁ GUARDAMOS LA PROVINCIA
+        province,
         zip_code,
+        images: finalImages,      // 🟢 AHORA SÍ GUARDAMOS LAS IMÁGENES
+        amenities: finalAmenities // 🟢 AHORA SÍ GUARDAMOS LAS COMODIDADES
       },
     });
   } catch (error) {
@@ -171,7 +201,7 @@ export async function updateProperty(formData: FormData) {
     throw new Error("Error al actualizar la base de datos.");
   }
 
-  // Refrescar la página principal y la vista de la propiedad
+  // Refrescar la página principal y la vista de la propiedad (Caché solucionado)
   revalidatePath('/');
   revalidatePath(`/propiedad/${existingProperty.slug}`);
   

@@ -7,8 +7,6 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 
 // 🌍 CORRECCIÓN DE RUTA: Subimos 4 niveles para encontrar 'components'
-// app -> propiedades -> editar -> [id] -> (estamos aquí)
-// ../../../../components/LocationMap
 const LocationMap = dynamic(() => import("../../../components/LocationMap"), { 
   ssr: false,
   loading: () => <div className="h-[300px] bg-gray-100 animate-pulse rounded flex items-center justify-center">Cargando Mapa...</div>
@@ -29,7 +27,6 @@ export default function EditForm({ property }: { property: any }) {
   const [uploadedImages, setUploadedImages] = useState<string[]>(property.images || []);
   
   // 📍 ESTADO PARA EL MAPA
-  // Convertimos a Number por seguridad, manejando nulls
   const [coords, setCoords] = useState<{lat: number, lng: number} | null>(
     property.latitude && property.longitude 
       ? { lat: Number(property.latitude), lng: Number(property.longitude) } 
@@ -71,9 +68,14 @@ export default function EditForm({ property }: { property: any }) {
         <input type="hidden" name="id" value={property.id} />
         <input type="hidden" name="slug" value={property.slug || ""} />
 
-        {/* 📍 INPUTS OCULTOS */}
+        {/* 📍 INPUTS OCULTOS MAPA */}
         <input type="hidden" name="latitude" value={coords?.lat || ""} />
         <input type="hidden" name="longitude" value={coords?.lng || ""} />
+
+        {/* 🟢 LA MAGIA: Inputs ocultos para que viajen las fotos una por una */}
+        {uploadedImages.map((url, index) => (
+          <input key={`img-${index}`} type="hidden" name="images" value={url} />
+        ))}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
@@ -85,25 +87,22 @@ export default function EditForm({ property }: { property: any }) {
           <input name="price" type="number" defaultValue={property.price_per_night} className="w-full p-2 border border-gray-300 rounded text-black font-medium" />
         </div>
 
-        {/* 🟢 GRILLA DE UBICACIÓN ACTUALIZADA */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Ciudad</label>
             <input name="city" type="text" defaultValue={property.city || ""} placeholder="Ej: Mar del Plata" className="w-full p-2 border border-gray-300 rounded text-black font-medium" />
           </div>
           <div>
-            {/* 🟢 CAMPO NUEVO: PROVINCIA */}
             <label className="block text-sm font-medium text-gray-700 mb-1">Provincia</label>
             <input name="province" type="text" defaultValue={property.province || ""} placeholder="Ej: Buenos Aires" className="w-full p-2 border border-gray-300 rounded text-black font-medium" />
           </div>
           <div>
-             <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
-             <input name="address" type="text" defaultValue={property.address || ""} placeholder="Calle y Nro" className="w-full p-2 border border-gray-300 rounded text-black font-medium" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+              <input name="address" type="text" defaultValue={property.address || ""} placeholder="Calle y Nro" className="w-full p-2 border border-gray-300 rounded text-black font-medium" />
           </div>
           <div>
-            {/* 🟢 CAMPO NUEVO: CÓDIGO POSTAL */}
-             <label className="block text-sm font-medium text-gray-700 mb-1">C. Postal</label>
-             <input name="zip_code" type="text" defaultValue={property.zip_code || ""} placeholder="Ej: 7600" className="w-full p-2 border border-gray-300 rounded text-black font-medium" />
+              <label className="block text-sm font-medium text-gray-700 mb-1">C. Postal</label>
+              <input name="zip_code" type="text" defaultValue={property.zip_code || ""} placeholder="Ej: 7600" className="w-full p-2 border border-gray-300 rounded text-black font-medium" />
           </div>
         </div>
 
@@ -151,7 +150,7 @@ export default function EditForm({ property }: { property: any }) {
                     </div>
                 ))}
             </div>
-            <input type="hidden" name="imagesJSON" value={JSON.stringify(uploadedImages)} />
+            {/* 🔴 SE ELIMINÓ EL INPUT "imagesJSON" PROBLEMÁTICO */}
         </div>
 
         <button type="submit" className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded transition-all shadow-md">
