@@ -152,7 +152,6 @@ export async function updateProperty(formData: FormData) {
   const rawPrice = formData.get('price');
   const price = rawPrice ? parseFloat(rawPrice as string) : existingProperty.price_per_night;
 
-  // 🟢 SOLUCIÓN: RECOLECTAR IMÁGENES Y COMODIDADES
   const amenities = formData.getAll('amenities') as string[];
   
   const images: string[] = [];
@@ -164,23 +163,19 @@ export async function updateProperty(formData: FormData) {
   if (img2) images.push(img2);
   if (img3) images.push(img3);
 
-  // También atrapamos si mandaste un array de inputs ocultos con name="images"
   const hiddenImages = formData.getAll('images') as string[];
   hiddenImages.forEach(img => {
     if (!images.includes(img)) images.push(img);
   });
 
-  // PREVENCIÓN: Si no subió fotos nuevas, le dejamos las que ya tenía en la base de datos
   const finalImages = images.length > 0 
     ? images 
     : (Array.isArray(existingProperty.images) ? existingProperty.images as string[] : []);
 
-  // PREVENCIÓN: Mismo trato para las comodidades
   const finalAmenities = amenities.length > 0 
     ? amenities 
     : (Array.isArray(existingProperty.amenities) ? existingProperty.amenities as string[] : []);
 
-  // Actualizar en base de datos
   try {
     await prisma.properties.update({
       where: { id: propertyId },
@@ -192,8 +187,8 @@ export async function updateProperty(formData: FormData) {
         city,
         province,
         zip_code,
-        images: finalImages,      // 🟢 AHORA SÍ GUARDAMOS LAS IMÁGENES
-        amenities: finalAmenities // 🟢 AHORA SÍ GUARDAMOS LAS COMODIDADES
+        images: finalImages,      
+        amenities: finalAmenities 
       },
     });
   } catch (error) {
@@ -201,10 +196,64 @@ export async function updateProperty(formData: FormData) {
     throw new Error("Error al actualizar la base de datos.");
   }
 
-  // Refrescar la página principal y la vista de la propiedad (Caché solucionado)
   revalidatePath('/');
   revalidatePath(`/propiedad/${existingProperty.slug}`);
-  
-  // Te redirijo al inicio para que veas los cambios
   redirect('/'); 
+}
+
+// --- 4. FUNCIÓN PARA RESERVAR (CREATE BOOKING) ---
+export async function createBooking(
+  propertyId: string, 
+  checkIn: Date | string, 
+  checkOut: Date | string, 
+  totalPrice: number
+) {
+  const user = await currentUser(); 
+  
+  if (!user) {
+    throw new Error("Debes iniciar sesión para realizar una reserva.");
+  }
+
+  const clerkId = user.id;
+  const email = user.emailAddresses[0]?.emailAddress || `huesped_${Date.now()}@no-email.com`;
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+
+  let dbUser = await prisma.users.findUnique({ 
+    where: { clerkId } 
+  });
+
+  if (!dbUser) {
+    console.log("Huésped nuevo detectado. Creando perfil...");
+    dbUser = await prisma.users.create({
+      data: {
+        clerkId: clerkId,
+        email: email,
+        full_name: fullName,
+      }
+    });
+  }
+
+  try {
+    const checkInDate = new Date(checkIn);
+    const checkOutDate = new Date(checkOut);
+
+    const newBooking = await prisma.bookings.create({
+      data: {
+        // 🟢 ESTE ES EL CAMBIO CLAVE: Usamos 'connect' para relacionar
+        property: { connect: { id: propertyId } },
+        guest: { connect: { id: dbUser.id } },
+        check_in_date: checkInDate,
+        check_out_date: checkOutDate,
+        total_price: totalPrice,
+      }
+    });
+
+    revalidatePath(`/propiedad`); 
+    
+    return { success: true, bookingId: newBooking.id };
+
+  } catch (error) {
+    console.error("❌ ERROR AL CREAR RESERVA:", error);
+    throw new Error("No se pudo completar la reserva en la base de datos.");
+  }
 }

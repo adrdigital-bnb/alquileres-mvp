@@ -36,7 +36,7 @@ export default async function Home({
   // 1. Obtenemos el ID de Clerk
   const { userId: clerkId } = await auth();
   
-  // 2. 🚨 EL ARREGLO: Buscamos tu ID real en la base de datos
+  // 2. Buscamos tu ID real en la base de datos (Súper optimizado)
   let dbUserId = null;
   if (clerkId) {
     const dbUser = await prisma.users.findUnique({
@@ -127,15 +127,18 @@ export default async function Home({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {properties.map((prop) => {
               
-              // 🚨 ACÁ USAMOS EL ID DE LA DB, NO EL DE CLERK
+              // Verificamos si es el dueño
               const isOwner = dbUserId && prop.owner_id === dbUserId;
+              
+              // 🟢 BLINDAJE 1: Normalizamos las imágenes por las dudas
+              const imagesList = Array.isArray(prop.images) ? (prop.images as string[]) : [];
 
               return (
                 <div key={prop.id} className="group bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 flex flex-col">
                   
                   <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden">
                     <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-500">
-                        <ImageCarousel images={prop.images} title={prop.title} fit="cover" />
+                        <ImageCarousel images={imagesList} title={prop.title} fit="cover" />
                     </div>
                     {isOwner && (
                         <span className="absolute top-3 right-3 bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded-full shadow-sm border border-gray-200 z-10">
@@ -152,7 +155,7 @@ export default async function Home({
                     </div>
                     
                     <p className="text-gray-500 text-sm line-clamp-2 mb-4">
-                      {prop.description}
+                      {prop.description || "Alojamiento sin descripción."}
                     </p>
                     
                     <div className="mt-auto pt-3 border-t border-gray-50 flex items-center justify-between">
@@ -162,7 +165,8 @@ export default async function Home({
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <Link href={`/propiedad/${prop.slug}`} className="text-sm font-semibold text-gray-900 hover:underline">
+                          {/* 🟢 BLINDAJE 2: Si por error no tiene slug, usa el ID */}
+                          <Link href={`/propiedad/${prop.slug || prop.id}`} className="text-sm font-semibold text-gray-900 hover:underline">
                             Ver
                           </Link>
 

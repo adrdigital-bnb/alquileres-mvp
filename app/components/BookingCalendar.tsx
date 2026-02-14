@@ -5,9 +5,12 @@ import { DayPicker, DateRange } from "react-day-picker";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import "react-day-picker/dist/style.css"; 
+import { createBooking } from "@/app/actions"; // 🟢 IMPORTAMOS TU FUNCIÓN DEL BACKEND
 
-export default function BookingCalendar({ pricePerNight, propertyTitle }: { pricePerNight: number, propertyTitle: string }) {
+// 🟢 AGREGAMOS "propertyId" PARA SABER QUÉ CASA RESERVAR
+export default function BookingCalendar({ propertyId, pricePerNight, propertyTitle }: { propertyId: string, pricePerNight: number, propertyTitle: string }) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [isLoading, setIsLoading] = useState(false); // 🟢 ESTADO PARA EL BOTÓN DE CARGA
 
   // Calculamos las noches y el total
   const totalNights = dateRange?.from && dateRange?.to 
@@ -16,11 +19,29 @@ export default function BookingCalendar({ pricePerNight, propertyTitle }: { pric
     
   const totalPrice = totalNights > 0 ? totalNights * pricePerNight : 0;
 
-  const handleReserve = () => {
+  // 🟢 LA NUEVA FUNCIÓN QUE HABLA CON TU BASE DE DATOS
+  const handleReserve = async () => {
     if (!dateRange?.from || !dateRange?.to) return;
     
-    // Simulamos la reserva
-    alert(`¡Reserva iniciada para ${propertyTitle}!\nLlegada: ${format(dateRange.from, 'dd/MM/yyyy')}\nSalida: ${format(dateRange.to, 'dd/MM/yyyy')}\nTotal: $${totalPrice}`);
+    setIsLoading(true); // Arranca a girar la ruedita virtual
+
+    try {
+      const result = await createBooking(
+        propertyId, 
+        dateRange.from, 
+        dateRange.to, 
+        totalPrice
+      );
+
+      if (result.success) {
+        alert("🎉 ¡Reserva guardada con éxito en la base de datos!");
+        setDateRange(undefined); // Limpiamos el calendario para la próxima
+      }
+    } catch (error: any) {
+      alert(error.message || "Ocurrió un error al intentar reservar. Por favor intenta de nuevo.");
+    } finally {
+      setIsLoading(false); // Frena la ruedita virtual
+    }
   };
 
   return (
@@ -32,16 +53,14 @@ export default function BookingCalendar({ pricePerNight, propertyTitle }: { pric
 
       <div className="border border-gray-200 rounded-xl overflow-hidden mb-4">
         <div className="p-4 flex justify-center bg-white text-gray-900">
-          {/* CALENDARIO VISUAL CORREGIDO */}
           <DayPicker
             mode="range"
             selected={dateRange}
             onSelect={setDateRange}
             locale={es}
-            disabled={{ before: new Date() }} // No permite elegir días del pasado
+            disabled={{ before: new Date() }} 
             className="font-sans m-0"
             classNames={{
-              // 🟢 ACÁ LE DAMOS EL CONTRASTE FUERTE A TODO EL TEXTO
               caption: "flex justify-center py-2 mb-4 relative items-center text-gray-900 font-extrabold capitalize text-lg",
               head_cell: "text-gray-500 font-bold text-xs uppercase w-10 pb-2",
               day: "h-10 w-10 p-0 font-medium hover:bg-gray-100 rounded-full text-gray-900 transition-colors cursor-pointer",
@@ -51,7 +70,6 @@ export default function BookingCalendar({ pricePerNight, propertyTitle }: { pric
               nav_button_next: "absolute right-2",
             }}
             modifiersClassNames={{
-              // 🟢 ACÁ LO HACEMOS ROSA PARA QUE COMBINE CON TU BOTÓN
               selected: "bg-rose-600 text-white font-bold hover:bg-rose-700 hover:text-white",
               range_middle: "bg-rose-50 text-rose-900 rounded-none hover:bg-rose-100 hover:text-rose-900",
               range_start: "bg-rose-600 text-white rounded-l-full font-bold hover:bg-rose-700 hover:text-white",
@@ -60,7 +78,6 @@ export default function BookingCalendar({ pricePerNight, propertyTitle }: { pric
           />
         </div>
         
-        {/* RESUMEN DE FECHAS */}
         <div className="grid grid-cols-2 border-t border-gray-200 divide-x divide-gray-200 bg-gray-50">
           <div className="p-3">
             <label className="block text-xs font-bold text-gray-800 uppercase">Check-in</label>
@@ -77,7 +94,6 @@ export default function BookingCalendar({ pricePerNight, propertyTitle }: { pric
         </div>
       </div>
 
-      {/* DESGLOSE DEL PRECIO */}
       {totalNights > 0 && (
         <div className="mb-4 space-y-2">
           <div className="flex justify-between text-gray-600 text-sm">
@@ -98,10 +114,13 @@ export default function BookingCalendar({ pricePerNight, propertyTitle }: { pric
 
       <button
         onClick={handleReserve}
-        disabled={!dateRange?.from || !dateRange?.to}
-        className="w-full bg-rose-600 hover:bg-rose-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md"
+        disabled={!dateRange?.from || !dateRange?.to || isLoading}
+        className="w-full bg-rose-600 hover:bg-rose-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md flex justify-center items-center"
       >
-        {dateRange?.from && dateRange?.to ? "Reservar ahora" : "Seleccioná tus fechas"}
+        {isLoading 
+          ? "Procesando reserva..." // 🟢 EL TEXTO CAMBIA MIENTRAS CARGA
+          : (dateRange?.from && dateRange?.to ? "Reservar ahora" : "Seleccioná tus fechas")
+        }
       </button>
       
       <p className="text-center text-gray-500 text-xs mt-3">

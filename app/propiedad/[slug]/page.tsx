@@ -64,7 +64,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
   const { userId } = await auth();
   const isOwner = userId && property.owner_id === userId;
 
-  // Normalización de Arrays
   const amenitiesList = Array.isArray(property.amenities) 
     ? (property.amenities as string[]) 
     : [];
@@ -73,7 +72,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
     ? (property.images as string[])
     : [];
 
-  // --- LÓGICA MAPA ---
   const mapAddress = property.address 
     ? `${property.address}, ${property.zip_code || ''}, Argentina`
     : null;
@@ -81,7 +79,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
   return (
     <main className="min-h-screen bg-gray-100 py-10 px-4 flex justify-center items-start">
       
-      {/* 🟢 CAMBIO 1: Aumentamos el max-w a 6xl para dar más aire en pantallas grandes */}
       <div className="w-full max-w-6xl bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
 
         {/* Barra superior */}
@@ -101,14 +98,13 @@ export default async function PropertyDetailPage({ params }: PageProps) {
            <ImageCarousel
              images={imagesList}
              title={property.title}
-             fit="cover" // 🟢 Probemos 'cover' para que se vea más impactante
+             fit="cover" 
            />
         </div>
 
         {/* CUERPO DE LA TARJETA */}
         <div className="p-6 md:p-8">
           
-          {/* Encabezado */}
           <div className="flex flex-col gap-2 mb-6">
               <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight">
                 {property.title}
@@ -122,13 +118,10 @@ export default async function PropertyDetailPage({ params }: PageProps) {
 
           <hr className="my-6 border-gray-100" />
 
-          {/* 🟢 CAMBIO 2: ESTRUCTURA FLEXBOX. La magia ocurre aquí. */}
           <div className="flex flex-col lg:flex-row gap-12 relative items-start">
 
-            {/* Columna Izquierda: Contenido Principal (se estira) */}
+            {/* Columna Izquierda */}
             <div className="flex-1 flex flex-col gap-10">
-               
-               {/* Descripción */}
                <div>
                 <h2 className="text-xl font-bold mb-3 text-gray-900">Sobre este lugar</h2>
                 <p className="text-gray-700 leading-relaxed whitespace-pre-line text-base">
@@ -136,7 +129,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                 </p>
               </div>
 
-              {/* Comodidades */}
               <div>
                 <h2 className="text-xl font-bold mb-4 text-gray-900">Lo que ofrece este lugar</h2>
                 {amenitiesList.length > 0 ? (
@@ -157,7 +149,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                 )}
               </div>
 
-              {/* MAPA DE UBICACIÓN */}
               <div>
                 <h2 className="text-xl font-bold mb-4 text-gray-900">A dónde vas a ir</h2>
                 <div className="w-full h-[400px] bg-gray-100 rounded-xl overflow-hidden border border-gray-200 relative shadow-sm">
@@ -181,10 +172,9 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                 </div>
                 <p className="text-gray-500 text-sm mt-3 ml-1">{property.address}, {property.city}, {property.province}</p>
               </div>
-
             </div>
 
-            {/* 🟢 CAMBIO 3: Columna Derecha (SIDEBAR FIJO). Ancho forzado de 400px en desktop */}
+            {/* Columna Derecha (Calendario) */}
             <div className="w-full lg:w-[400px] shrink-0 relative">
                <div className="sticky top-8">
                  {isOwner ? (
@@ -201,8 +191,9 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                        </div>
                    </div>
                  ) : (
-                   // 🟢 El calendario ahora tiene espacio garantizado
+                   // 🟢 ACÁ ESTÁ LA MAGIA: Ahora sí le pasamos el propertyId
                    <BookingCalendar 
+                     propertyId={property.id} 
                      pricePerNight={Number(property.price_per_night)} 
                      propertyTitle={property.title} 
                    />
