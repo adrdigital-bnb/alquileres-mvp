@@ -32,7 +32,7 @@ export async function createProperty(formData: FormData) {
   });
 
   if (!dbUser) {
-    console.log("Usuario nuevo detectado. Sincronizando Clerk con Neon...");
+    console.log("👤 Usuario nuevo detectado. Sincronizando Clerk con Neon...");
     dbUser = await prisma.users.create({
       data: {
         clerkId: clerkId,
@@ -74,7 +74,7 @@ export async function createProperty(formData: FormData) {
   try {
     await prisma.properties.create({
       data: {
-        owner_id: dbUser.id, 
+        owner: { connect: { id: dbUser.id } }, // 🟢 Mejor usar connect como hiciste en reservas
         title,
         slug, 
         description,
@@ -89,7 +89,7 @@ export async function createProperty(formData: FormData) {
       },
     });
   } catch (error) {
-    console.error("❌ ERROR AL CREAR:", error);
+    console.error("❌ ERROR AL CREAR PROPIEDAD:", error);
     throw new Error("Error al guardar en la base de datos. Revisa la terminal."); 
   }
 
@@ -114,7 +114,12 @@ export async function deleteProperty(formData: FormData) {
     throw new Error("⛔ No tienes permiso para borrar esto.");
   }
 
-  await prisma.properties.delete({ where: { id: propertyId } });
+  try {
+    await prisma.properties.delete({ where: { id: propertyId } });
+  } catch (error) {
+    console.error("❌ ERROR AL BORRAR PROPIEDAD:", error);
+    throw new Error("Error al eliminar la propiedad.");
+  }
 
   revalidatePath('/');
 }
@@ -124,24 +129,20 @@ export async function updateProperty(formData: FormData) {
   const { userId: clerkId } = await auth();
   if (!clerkId) throw new Error("Debes iniciar sesión para editar.");
 
-  // Buscamos al usuario interno
   const dbUser = await prisma.users.findUnique({ where: { clerkId } });
   if (!dbUser) throw new Error("Usuario no encontrado en la DB local.");
 
-  // Buscamos el ID de la propiedad
   const propertyId = (formData.get('id') as string) || (formData.get('propertyId') as string);
 
   if (!propertyId) {
     throw new Error("Falta el ID de la propiedad a actualizar.");
   }
 
-  // Verificamos que la propiedad exista y sea del dueño
   const existingProperty = await prisma.properties.findUnique({ where: { id: propertyId } });
   if (!existingProperty || existingProperty.owner_id !== dbUser.id) {
     throw new Error("⛔ No tienes permiso para editar esto.");
   }
 
-  // Recolectar datos del formulario
   const title = formData.get('title') as string;
   const description = formData.get('description') as string;
   const address = formData.get('address') as string;
@@ -150,7 +151,8 @@ export async function updateProperty(formData: FormData) {
   const zip_code = formData.get('zip_code') as string;
   
   const rawPrice = formData.get('price');
-  const price = rawPrice ? parseFloat(rawPrice as string) : existingProperty.price_per_night;
+  // 🟢 Aseguramos que el precio se maneje como número si Prisma devuelve un objeto Decimal
+  const price = rawPrice ? parseFloat(rawPrice as string) : Number(existingProperty.price_per_night);
 
   const amenities = formData.getAll('amenities') as string[];
   
@@ -192,7 +194,7 @@ export async function updateProperty(formData: FormData) {
       },
     });
   } catch (error) {
-    console.error("❌ ERROR AL ACTUALIZAR:", error);
+    console.error("❌ ERROR AL ACTUALIZAR PROPIEDAD:", error);
     throw new Error("Error al actualizar la base de datos.");
   }
 
@@ -223,7 +225,7 @@ export async function createBooking(
   });
 
   if (!dbUser) {
-    console.log("Huésped nuevo detectado. Creando perfil...");
+    console.log("👤 Huésped nuevo detectado. Creando perfil...");
     dbUser = await prisma.users.create({
       data: {
         clerkId: clerkId,
@@ -239,7 +241,6 @@ export async function createBooking(
 
     const newBooking = await prisma.bookings.create({
       data: {
-        // 🟢 ESTE ES EL CAMBIO CLAVE: Usamos 'connect' para relacionar
         property: { connect: { id: propertyId } },
         guest: { connect: { id: dbUser.id } },
         check_in_date: checkInDate,
@@ -255,5 +256,42 @@ export async function createBooking(
   } catch (error) {
     console.error("❌ ERROR AL CREAR RESERVA:", error);
     throw new Error("No se pudo completar la reserva en la base de datos.");
+  }
+}
+
+// --- 5. 🟢 NUEVA FUNCIÓN: OBTENER FECHAS BLOQUEADAS ---
+export async function getUnavailableDates(propertyId: string) {
+  try {
+    // 1. Buscamos las reservas que NO estén canceladas
+    const activeBookings = await prisma.bookings.findMany({
+      where: {
+        property_id: propertyId,
+        status: { not: "CANCELLED" },
+      },
+      select: { check_in_date: true, check_out_date: true },
+    });
+
+    // 2. Buscamos las fechas bloqueadas manualmente (para mantenimientos o uso propio)
+    const blockedDates = await prisma.blocked_dates.findMany({
+      where: { property_id: propertyId },
+      select: { start_date: true, end_date: true },
+    });
+
+    // 3. Unificamos todo en el formato que lee react-day-picker
+    const disabledRanges = [
+      ...activeBookings.map((b) => ({
+        from: b.check_in_date,
+        to: b.check_out_date,
+      })),
+      ...blockedDates.map((b) => ({
+        from: b.start_date,
+        to: b.end_date,
+      })),
+    ];
+
+    return { success: true, disabledRanges };
+  } catch (error) {
+    console.error("❌ ERROR OBTENIENDO FECHAS OCUPADAS:", error);
+    return { success: false, disabledRanges: [] };
   }
 }

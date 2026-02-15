@@ -3,26 +3,41 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import DeleteButton from "@/app/components/DeleteButton";
-import Image from "next/image"; // Usamos Image de Next.js para la miniatura
+import Image from "next/image"; 
+// 🟢 IMPORTAMOS DATE-FNS PARA FORMATEAR LAS FECHAS
+import { format } from "date-fns";
 
 export const dynamic = "force-dynamic";
 
 export default async function MisPropiedadesPage() {
-  const { userId } = await auth();
+  const { userId } = await auth(); 
 
-  // 1. Seguridad: Si no hay usuario, mandarlo al login
   if (!userId) {
     redirect("/");
   }
 
-  // 2. Buscar SOLO las propiedades de este usuario
+  const dbUser = await prisma.users.findUnique({
+    where: { clerkId: userId },
+  });
+
+  if (!dbUser) {
+    redirect("/");
+  }
+
+  // 🟢 AHORA LE PEDIMOS A PRISMA QUE TAMBIÉN TRAIGA LAS RESERVAS
   const properties = await prisma.properties.findMany({
     where: {
-      owner_id: userId,
+      owner_id: dbUser.id, 
     },
     orderBy: {
       created_at: "desc",
     },
+    include: {
+      bookings: {
+        where: { status: { not: "CANCELLED" } }, // Solo traemos las que no estén canceladas
+        orderBy: { check_in_date: "asc" } // Ordenadas por fecha más próxima
+      }
+    }
   });
 
   return (
@@ -64,6 +79,7 @@ export default async function MisPropiedadesPage() {
                     <th className="px-6 py-4">Propiedad</th>
                     <th className="px-6 py-4">Precio</th>
                     <th className="px-6 py-4">Estado</th>
+                    <th className="px-6 py-4">Fechas Reservadas</th> {/* 🟢 NUEVA COLUMNA */}
                     <th className="px-6 py-4 text-right">Acciones</th>
                   </tr>
                 </thead>
@@ -71,7 +87,6 @@ export default async function MisPropiedadesPage() {
                   {properties.map((property) => (
                     <tr key={property.id} className="hover:bg-gray-50 transition">
                       
-                      {/* FOTO Y TITULO */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-4">
                           <div className="h-12 w-16 relative rounded-md overflow-hidden bg-gray-200 flex-shrink-0">
@@ -93,19 +108,31 @@ export default async function MisPropiedadesPage() {
                         </div>
                       </td>
 
-                      {/* PRECIO */}
                       <td className="px-6 py-4 font-medium text-gray-900">
                         ${property.price_per_night.toString()} <span className="text-gray-400 font-normal">/noche</span>
                       </td>
 
-                      {/* ESTADO (ACTIVO/INACTIVO) - Hardcodeado true por ahora */}
                       <td className="px-6 py-4">
                         <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold border border-green-200">
                           Activa
                         </span>
                       </td>
 
-                      {/* BOTONES */}
+                      {/* 🟢 NUEVA COLUMNA CON LAS FECHAS OCUPADAS */}
+                      <td className="px-6 py-4">
+                        {property.bookings.length === 0 ? (
+                          <span className="text-gray-400 text-xs italic">Sin reservas aún</span>
+                        ) : (
+                          <div className="flex flex-col gap-1.5">
+                            {property.bookings.map((booking) => (
+                              <span key={booking.id} className="inline-flex items-center justify-center bg-rose-50 text-rose-700 px-2 py-1 rounded border border-rose-100 text-xs font-semibold whitespace-nowrap w-fit">
+                                {format(new Date(booking.check_in_date), "dd/MM/yyyy")} al {format(new Date(booking.check_out_date), "dd/MM/yyyy")}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </td>
+
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-3">
                           <Link

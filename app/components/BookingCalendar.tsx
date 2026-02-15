@@ -1,16 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DayPicker, DateRange } from "react-day-picker";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import "react-day-picker/dist/style.css"; 
-import { createBooking } from "@/app/actions"; // 🟢 IMPORTAMOS TU FUNCIÓN DEL BACKEND
+// 🟢 IMPORTAMOS LA FUNCIÓN DE CREAR Y LA NUEVA DE TRAER FECHAS OCUPADAS
+import { createBooking, getUnavailableDates } from "@/app/actions"; 
 
-// 🟢 AGREGAMOS "propertyId" PARA SABER QUÉ CASA RESERVAR
 export default function BookingCalendar({ propertyId, pricePerNight, propertyTitle }: { propertyId: string, pricePerNight: number, propertyTitle: string }) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [isLoading, setIsLoading] = useState(false); // 🟢 ESTADO PARA EL BOTÓN DE CARGA
+  const [isLoading, setIsLoading] = useState(false);
+  // 🟢 ESTADO PARA GUARDAR LAS FECHAS OCUPADAS
+  const [disabledDates, setDisabledDates] = useState<{from: Date, to: Date}[]>([]); 
+
+  // 🟢 EFECTO QUE BUSCA LAS FECHAS AL CARGAR LA PÁGINA
+  useEffect(() => {
+    const fetchOccupiedDates = async () => {
+      const result = await getUnavailableDates(propertyId);
+      if (result.success && result.disabledRanges) {
+        setDisabledDates(result.disabledRanges);
+      }
+    };
+    fetchOccupiedDates();
+  }, [propertyId]);
 
   // Calculamos las noches y el total
   const totalNights = dateRange?.from && dateRange?.to 
@@ -19,7 +32,26 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
     
   const totalPrice = totalNights > 0 ? totalNights * pricePerNight : 0;
 
-  // 🟢 LA NUEVA FUNCIÓN QUE HABLA CON TU BASE DE DATOS
+  // 🟢 VALIDACIÓN ANTI-OVERBOOKING: Evita que un rango cruce días ocupados
+  const handleSelect = (range: DateRange | undefined) => {
+    if (range?.from && range?.to) {
+      const isOverlapping = disabledDates.some(disabled => {
+        return (
+          (range.from! <= disabled.from && range.to! >= disabled.from) ||
+          (range.from! <= disabled.to && range.to! >= disabled.to)
+        );
+      });
+
+      if (isOverlapping) {
+        // Si intenta cruzar una reserva, le reiniciamos la selección al primer clic
+        setDateRange({ from: range.from, to: undefined });
+        return;
+      }
+    }
+    setDateRange(range);
+  };
+
+  // Función que habla con la base de datos para guardar la reserva
   const handleReserve = async () => {
     if (!dateRange?.from || !dateRange?.to) return;
     
@@ -35,6 +67,9 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
 
       if (result.success) {
         alert("🎉 ¡Reserva guardada con éxito en la base de datos!");
+        
+        // 🟢 ACTUALIZAMOS EL CALENDARIO EN VIVO SIN RECARGAR LA PÁGINA
+        setDisabledDates(prev => [...prev, { from: dateRange.from!, to: dateRange.to! }]);
         setDateRange(undefined); // Limpiamos el calendario para la próxima
       }
     } catch (error: any) {
@@ -56,9 +91,13 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
           <DayPicker
             mode="range"
             selected={dateRange}
-            onSelect={setDateRange}
+            onSelect={handleSelect} // 🟢 USAMOS LA NUEVA FUNCIÓN DE SELECCIÓN
             locale={es}
-            disabled={{ before: new Date() }} 
+            // 🟢 LE PASAMOS EL ARRAY CON LAS FECHAS DESHABILITADAS DE LA BD
+            disabled={[
+              { before: new Date() },
+              ...disabledDates 
+            ]} 
             className="font-sans m-0"
             classNames={{
               caption: "flex justify-center py-2 mb-4 relative items-center text-gray-900 font-extrabold capitalize text-lg",
@@ -118,7 +157,7 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
         className="w-full bg-rose-600 hover:bg-rose-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md flex justify-center items-center"
       >
         {isLoading 
-          ? "Procesando reserva..." // 🟢 EL TEXTO CAMBIA MIENTRAS CARGA
+          ? "Procesando reserva..." 
           : (dateRange?.from && dateRange?.to ? "Reservar ahora" : "Seleccioná tus fechas")
         }
       </button>
