@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
-import ImageCarousel from "@/app/components/ImageCarousel";
+// 🟢 1. IMPORTAMOS LA NUEVA GALERÍA Y SACAMOS EL VIEJO CAROUSEL
+import ImageGallery from "@/app/components/ImageGallery"; // (Asegurate de que esta ruta coincida con donde guardaste el componente)
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
@@ -93,13 +94,9 @@ export default async function PropertyDetailPage({ params }: PageProps) {
             )}
         </div>
 
-        {/* IMAGEN: Carousel */}
-        <div className="h-[300px] md:h-[450px] w-full relative bg-gray-100 flex items-center justify-center">
-           <ImageCarousel
-             images={imagesList}
-             title={property.title}
-             fit="cover" 
-           />
+        {/* 🟢 2. REEMPLAZAMOS EL DIV DEL CAROUSEL POR LA NUEVA GALERÍA ESTILO AIRBNB */}
+        <div className="p-4 md:p-6 pb-0">
+           <ImageGallery images={imagesList} />
         </div>
 
         {/* CUERPO DE LA TARJETA */}
@@ -191,7 +188,6 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                        </div>
                    </div>
                  ) : (
-                   // 🟢 ACÁ ESTÁ LA MAGIA: Ahora sí le pasamos el propertyId
                    <BookingCalendar 
                      propertyId={property.id} 
                      pricePerNight={Number(property.price_per_night)} 
