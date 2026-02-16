@@ -5,16 +5,18 @@ import { DayPicker, DateRange } from "react-day-picker";
 import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import "react-day-picker/dist/style.css"; 
-// 🟢 IMPORTAMOS LA FUNCIÓN DE CREAR Y LA NUEVA DE TRAER FECHAS OCUPADAS
 import { createBooking, getUnavailableDates } from "@/app/actions"; 
+// 🟢 1. IMPORTAMOS EL ROUTER DE NEXT.JS
+import { useRouter } from "next/navigation";
 
 export default function BookingCalendar({ propertyId, pricePerNight, propertyTitle }: { propertyId: string, pricePerNight: number, propertyTitle: string }) {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [isLoading, setIsLoading] = useState(false);
-  // 🟢 ESTADO PARA GUARDAR LAS FECHAS OCUPADAS
   const [disabledDates, setDisabledDates] = useState<{from: Date, to: Date}[]>([]); 
+  
+  // 🟢 2. INICIALIZAMOS EL ROUTER
+  const router = useRouter();
 
-  // 🟢 EFECTO QUE BUSCA LAS FECHAS AL CARGAR LA PÁGINA
   useEffect(() => {
     const fetchOccupiedDates = async () => {
       const result = await getUnavailableDates(propertyId);
@@ -25,14 +27,12 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
     fetchOccupiedDates();
   }, [propertyId]);
 
-  // Calculamos las noches y el total
   const totalNights = dateRange?.from && dateRange?.to 
     ? differenceInDays(dateRange.to, dateRange.from) 
     : 0;
     
   const totalPrice = totalNights > 0 ? totalNights * pricePerNight : 0;
 
-  // 🟢 VALIDACIÓN ANTI-OVERBOOKING: Evita que un rango cruce días ocupados
   const handleSelect = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
       const isOverlapping = disabledDates.some(disabled => {
@@ -43,7 +43,6 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
       });
 
       if (isOverlapping) {
-        // Si intenta cruzar una reserva, le reiniciamos la selección al primer clic
         setDateRange({ from: range.from, to: undefined });
         return;
       }
@@ -51,11 +50,10 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
     setDateRange(range);
   };
 
-  // Función que habla con la base de datos para guardar la reserva
   const handleReserve = async () => {
     if (!dateRange?.from || !dateRange?.to) return;
     
-    setIsLoading(true); // Arranca a girar la ruedita virtual
+    setIsLoading(true); 
 
     try {
       const result = await createBooking(
@@ -66,16 +64,18 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
       );
 
       if (result.success) {
-        alert("🎉 ¡Reserva guardada con éxito en la base de datos!");
+        // 🟢 3. FORMATEAMOS LAS FECHAS PARA LA URL Y REDIRIGIMOS
+        const checkinFormat = format(dateRange.from, "dd MMM yyyy", { locale: es });
+        const checkoutFormat = format(dateRange.to, "dd MMM yyyy", { locale: es });
         
-        // 🟢 ACTUALIZAMOS EL CALENDARIO EN VIVO SIN RECARGAR LA PÁGINA
-        setDisabledDates(prev => [...prev, { from: dateRange.from!, to: dateRange.to! }]);
-        setDateRange(undefined); // Limpiamos el calendario para la próxima
+        router.push(
+          `/reserva-exitosa?propiedad=${encodeURIComponent(propertyTitle)}&checkin=${encodeURIComponent(checkinFormat)}&checkout=${encodeURIComponent(checkoutFormat)}&total=${totalPrice}`
+        );
       }
     } catch (error: any) {
       alert(error.message || "Ocurrió un error al intentar reservar. Por favor intenta de nuevo.");
     } finally {
-      setIsLoading(false); // Frena la ruedita virtual
+      setIsLoading(false); 
     }
   };
 
@@ -91,9 +91,8 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
           <DayPicker
             mode="range"
             selected={dateRange}
-            onSelect={handleSelect} // 🟢 USAMOS LA NUEVA FUNCIÓN DE SELECCIÓN
+            onSelect={handleSelect}
             locale={es}
-            // 🟢 LE PASAMOS EL ARRAY CON LAS FECHAS DESHABILITADAS DE LA BD
             disabled={[
               { before: new Date() },
               ...disabledDates 
