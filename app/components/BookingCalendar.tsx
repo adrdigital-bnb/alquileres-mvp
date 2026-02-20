@@ -6,7 +6,7 @@ import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import "react-day-picker/dist/style.css"; 
 import { createBooking, getUnavailableDates } from "@/app/actions"; 
-// 🟢 1. IMPORTAMOS EL ROUTER DE NEXT.JS
+// Importamos el router por si lo necesitamos en otros flujos
 import { useRouter } from "next/navigation";
 
 export default function BookingCalendar({ propertyId, pricePerNight, propertyTitle }: { propertyId: string, pricePerNight: number, propertyTitle: string }) {
@@ -14,7 +14,6 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
   const [isLoading, setIsLoading] = useState(false);
   const [disabledDates, setDisabledDates] = useState<{from: Date, to: Date}[]>([]); 
   
-  // 🟢 2. INICIALIZAMOS EL ROUTER
   const router = useRouter();
 
   useEffect(() => {
@@ -56,6 +55,7 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
     setIsLoading(true); 
 
     try {
+      // 1. Guardamos la reserva en tu base de datos (Neon DB)
       const result = await createBooking(
         propertyId, 
         dateRange.from, 
@@ -64,16 +64,36 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
       );
 
       if (result.success) {
-        // 🟢 3. FORMATEAMOS LAS FECHAS PARA LA URL Y REDIRIGIMOS
+        // 2. Preparamos los datos del viaje
         const checkinFormat = format(dateRange.from, "dd MMM yyyy", { locale: es });
         const checkoutFormat = format(dateRange.to, "dd MMM yyyy", { locale: es });
         
-        router.push(
-          `/reserva-exitosa?propiedad=${encodeURIComponent(propertyTitle)}&checkin=${encodeURIComponent(checkinFormat)}&checkout=${encodeURIComponent(checkoutFormat)}&total=${totalPrice}`
-        );
+        // 3. Llamamos a nuestra API de MercadoPago
+        const respuesta = await fetch('/api/checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            propiedad: propertyTitle,
+            total: totalPrice,
+            checkin: checkinFormat,
+            checkout: checkoutFormat
+          }),
+        });
+
+        const data = await respuesta.json();
+
+        // 4. Si todo sale bien, redirigimos al turista a la pantalla de pago
+        if (data.url) {
+          window.location.href = data.url; 
+        } else {
+          throw new Error("No se generó el link de pago");
+        }
       }
     } catch (error: any) {
-      alert(error.message || "Ocurrió un error al intentar reservar. Por favor intenta de nuevo.");
+      console.error("Error en la reserva:", error);
+      alert(error.message || "Ocurrió un error al intentar reservar y pagar. Por favor intenta de nuevo.");
     } finally {
       setIsLoading(false); 
     }
@@ -156,13 +176,13 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
         className="w-full bg-rose-600 hover:bg-rose-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 px-4 rounded-lg transition-colors shadow-md flex justify-center items-center"
       >
         {isLoading 
-          ? "Procesando reserva..." 
-          : (dateRange?.from && dateRange?.to ? "Reservar ahora" : "Seleccioná tus fechas")
+          ? "Conectando con MercadoPago..." 
+          : (dateRange?.from && dateRange?.to ? "Reservar y Pagar" : "Seleccioná tus fechas")
         }
       </button>
       
       <p className="text-center text-gray-500 text-xs mt-3">
-        Aún no se te cobrará ningún importe
+        Serás redirigido a MercadoPago de forma segura
       </p>
     </div>
   );
