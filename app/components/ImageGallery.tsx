@@ -18,61 +18,58 @@ export default function ImageGallery({ images }: { images: string[] }) {
   const nextImage = () => setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
   const prevImage = () => setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
 
-  // Tomamos las primeras 5 imágenes para la grilla
-  const displayImages = images.slice(0, 5);
-
   return (
     <>
-      {/* 1. LA GRILLA ESTILO AIRBNB (Igual a tu captura) */}
+      {/* 1. LA GRILLA ESTILO AIRBNB */}
       <div className="relative w-full h-[300px] md:h-[450px] flex gap-2">
         
-        {/* CASO A: Tiene 5 fotos o más (El diseño ideal de tu captura) */}
-        {displayImages.length >= 5 && (
+        {/* CASO A: Tiene 5 fotos o más (El diseño ideal) */}
+        {images.length >= 5 && (
           <>
             {/* Foto Principal (Izquierda) */}
             <div 
               className="w-full md:w-1/2 h-full relative rounded-l-xl overflow-hidden cursor-pointer group"
               onClick={() => openModal(0)}
             >
-              <img src={displayImages[0]} alt="Principal" className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" />
+              <img src={images[0]} alt="Principal" className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" />
             </div>
             
             {/* Grilla de 4 fotos (Derecha) */}
             <div className="hidden md:grid grid-cols-2 grid-rows-2 gap-2 w-1/2 h-full">
               <div className="relative overflow-hidden cursor-pointer group" onClick={() => openModal(1)}>
-                <img src={displayImages[1]} className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" alt="Foto 2" />
+                <img src={images[1]} className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" alt="Foto 2" />
               </div>
               <div className="relative overflow-hidden rounded-tr-xl cursor-pointer group" onClick={() => openModal(2)}>
-                <img src={displayImages[2]} className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" alt="Foto 3" />
+                <img src={images[2]} className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" alt="Foto 3" />
               </div>
               <div className="relative overflow-hidden cursor-pointer group" onClick={() => openModal(3)}>
-                <img src={displayImages[3]} className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" alt="Foto 4" />
+                <img src={images[3]} className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" alt="Foto 4" />
               </div>
               <div className="relative overflow-hidden rounded-br-xl cursor-pointer group" onClick={() => openModal(4)}>
-                <img src={displayImages[4]} className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" alt="Foto 5" />
+                <img src={images[4]} className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" alt="Foto 5" />
               </div>
             </div>
           </>
         )}
 
         {/* CASO B: Tiene solo 1 foto */}
-        {displayImages.length === 1 && (
+        {images.length === 1 && (
           <div className="w-full h-full relative rounded-xl overflow-hidden cursor-pointer group" onClick={() => openModal(0)}>
-            <img src={displayImages[0]} alt="Principal" className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" />
+            <img src={images[0]} alt="Principal" className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" />
           </div>
         )}
 
         {/* CASO C: Tiene entre 2 y 4 fotos (Se adapta fluido) */}
-        {displayImages.length > 1 && displayImages.length < 5 && (
+        {images.length > 1 && images.length < 5 && (
           <>
             <div className="w-1/2 h-full relative rounded-l-xl overflow-hidden cursor-pointer group" onClick={() => openModal(0)}>
-              <img src={displayImages[0]} alt="Principal" className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" />
+              <img src={images[0]} alt="Principal" className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" />
             </div>
             <div className="w-1/2 h-full flex flex-col gap-2">
-              {displayImages.slice(1).map((img, idx) => (
+              {images.slice(1).map((img, idx) => (
                 <div 
                   key={idx} 
-                  className={`relative flex-1 overflow-hidden cursor-pointer group ${idx === 0 ? 'rounded-tr-xl' : ''} ${idx === displayImages.length - 2 ? 'rounded-br-xl' : ''}`}
+                  className={`relative flex-1 overflow-hidden cursor-pointer group ${idx === 0 ? 'rounded-tr-xl' : ''} ${idx === images.length - 2 ? 'rounded-br-xl' : ''}`}
                   onClick={() => openModal(idx + 1)}
                 >
                   <img src={img} className="w-full h-full object-cover group-hover:brightness-90 transition duration-200" alt={`Foto complementaria`} />

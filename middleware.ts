@@ -1,6 +1,22 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-export default clerkMiddleware();
+// Define qué rutas son públicas (incluye las de retorno de MP y webhooks)
+const isPublicRoute = createRouteMatcher([
+  '/', // Para que se pueda ver la página principal
+  '/propiedades(.*)', // Para que se puedan ver las propiedades sin estar logueado
+  '/reserva-exitosa(.*)',
+  '/reserva-fallida(.*)',
+  '/reserva-pendiente(.*)',
+  '/api/(.*)', // ¡CRÍTICO! Para que los webhooks de Mercado Pago y Clerk puedan entrar
+  '/sign-in(.*)',
+  '/sign-up(.*)'
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (!isPublicRoute(req)) {
+    await auth.protect(); // <- Quitas los paréntesis de auth y agregas await
+  }
+});
 
 export const config = {
   matcher: [

@@ -6,7 +6,6 @@ import { format, differenceInDays } from "date-fns";
 import { es } from "date-fns/locale";
 import "react-day-picker/dist/style.css"; 
 import { createBooking, getUnavailableDates } from "@/app/actions"; 
-// Importamos el router por si lo necesitamos en otros flujos
 import { useRouter } from "next/navigation";
 
 export default function BookingCalendar({ propertyId, pricePerNight, propertyTitle }: { propertyId: string, pricePerNight: number, propertyTitle: string }) {
@@ -32,16 +31,15 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
     
   const totalPrice = totalNights > 0 ? totalNights * pricePerNight : 0;
 
-  const handleSelect = (range: DateRange | undefined) => {
+const handleSelect = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
+      // Lógica mejorada para detectar si el rango seleccionado "atraviesa" fechas deshabilitadas
       const isOverlapping = disabledDates.some(disabled => {
-        return (
-          (range.from! <= disabled.from && range.to! >= disabled.from) ||
-          (range.from! <= disabled.to && range.to! >= disabled.to)
-        );
+        return range.from! <= disabled.to && range.to! >= disabled.from;
       });
 
       if (isOverlapping) {
+        // Si hay superposición, reiniciamos la selección dejando solo el día de inicio
         setDateRange({ from: range.from, to: undefined });
         return;
       }
@@ -56,19 +54,22 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
 
     try {
       // 1. Guardamos la reserva en tu base de datos (Neon DB)
-      const result = await createBooking(
+      const result: any = await createBooking(
         propertyId, 
         dateRange.from, 
         dateRange.to, 
         totalPrice
       );
 
-      if (result.success) {
+      // 🔥 RED DE SEGURIDAD: Atrapamos el ID venga como venga 🔥
+      const bookingId = typeof result === 'string' ? result : (result?.bookingId || result?.id);
+
+      if (bookingId) {
         // 2. Preparamos los datos del viaje
         const checkinFormat = format(dateRange.from, "dd MMM yyyy", { locale: es });
         const checkoutFormat = format(dateRange.to, "dd MMM yyyy", { locale: es });
         
-        // 3. Llamamos a nuestra API de MercadoPago
+        // 3. Llamamos a nuestra API de MercadoPago Y LE MANDAMOS EL ID
         const respuesta = await fetch('/api/checkout', {
           method: 'POST',
           headers: {
@@ -78,7 +79,8 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
             propiedad: propertyTitle,
             total: totalPrice,
             checkin: checkinFormat,
-            checkout: checkoutFormat
+            checkout: checkoutFormat,
+            reservaId: bookingId // 🔥 ACÁ VIAJA EL ID DE LA RESERVA AL CHECKOUT 🔥
           }),
         });
 
@@ -90,6 +92,8 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
         } else {
           throw new Error("No se generó el link de pago");
         }
+      } else {
+         throw new Error("Error al crear la reserva en la base de datos o falta el ID.");
       }
     } catch (error: any) {
       console.error("Error en la reserva:", error);

@@ -1,32 +1,77 @@
 import { NextResponse } from "next/server";
+import { MercadoPagoConfig, Payment } from "mercadopago";
+import { prisma } from "@/lib/prisma";
+
+const client = new MercadoPagoConfig({ 
+  accessToken: process.env.MP_ACCESS_TOKEN as string 
+});
 
 export async function POST(request: Request) {
   try {
-    // Capturamos los datos que manda Mercado Pago (pueden venir por URL o por Body)
+    // 1. Obtenemos los parámetros de la URL o el body
+    const body = await request.json();
     const url = new URL(request.url);
-    const topic = url.searchParams.get("topic") || url.searchParams.get("type");
-    
-    // Intentamos leer el body (si lo hay)
-    const body = await request.json().catch(() => ({}));
-    const type = topic || body.type;
+    const topic = url.searchParams.get("topic") || body.type;
+    const paymentId = url.searchParams.get("id") || body.data?.id;
 
-    console.log("🔔 ¡MERCADO PAGO LLAMÓ AL WEBHOOK! 🔔");
-    console.log("Tipo de evento:", type);
+    // 2. Filtramos: Solo nos interesan las notificaciones de pagos
+    if (topic === "payment" && paymentId) {
+      console.log(`🔔 Notificación de pago recibida. ID: ${paymentId}`);
 
-    // Si el evento es un pago, capturamos el ID para usarlo después
-    if (type === "payment") {
-      // Mercado pago a veces manda el ID en la URL y a veces en el body
-      const paymentId = body.data?.id || url.searchParams.get("data.id");
-      console.log("💰 ID del Pago recibido:", paymentId);
-      
-      // TODO: En el futuro, acá usaremos Prisma para cambiar el estado de la reserva
-    }
+      // 3. Consultamos el estado real del pago a la API de Mercado Pago
+      const payment = new Payment(client);
+      const paymentData = await payment.get({ id: paymentId });
 
-    // Es vital responderle "200 OK" rápido a Mercado Pago para que no reintente
+      // 4. Extraemos el external_reference (tu reservaId) y el estado
+      const estadoPago = paymentData.status; // ej: "approved", "pending", "rejected"
+      const reservaId = paymentData.external_reference;
+
+      console.log(`Estado: ${estadoPago} | Reserva ID: ${reservaId}`);
+
+      // 5. Lógica de actualización según el estado del pago
+      if (estadoPago === "approved" && reservaId && reservaId !== "ID_NO_PROPORCIONADO") {
+        
+        // Verificamos el estado actual de la reserva
+        const reservaActual = await prisma.bookings.findUnique({
+          where: { id: reservaId },
+          select: { status: true }
+        });
+
+        if (reservaActual && reservaActual.status !== "CONFIRMED") {
+          // Actualizamos la reserva usando Prisma a CONFIRMED
+          await prisma.bookings.update({
+            where: { 
+              id: reservaId 
+            },
+            data: { 
+              status: "CONFIRMED", 
+              payment_id: String(paymentId) 
+            },
+          });
+          
+          console.log(`✅ Reserva ${reservaId} actualizada a CONFIRMED con éxito.`);
+        } else {
+          console.log(`⚠️ La reserva ${reservaId} ya estaba pagada o no existe.`);
+        }
+        
+      } else if ((estadoPago === "rejected" || estadoPago === "cancelled") && reservaId && reservaId !== "ID_NO_PROPORCIONADO") {
+        
+        // 🔥 NUEVO: Liberamos las fechas si el pago falla o el usuario cancela
+        await prisma.bookings.update({
+          where: { id: reservaId },
+          data: { status: "CANCELLED" }, 
+        });
+        
+        console.log(`❌ Pago rechazado o cancelado. Reserva ${reservaId} actualizada a CANCELLED para liberar fechas.`);
+      }
+    } 
+
+    // 6. Respondemos a Mercado Pago con un 200 OK rápidamente
     return new NextResponse("OK", { status: 200 });
 
   } catch (error) {
-    console.error("❌ Error en el Webhook de MP:", error);
-    return new NextResponse("Error interno", { status: 500 });
+    console.error("❌ Error en el webhook de Mercado Pago:", error);
+    // Devolvemos 500 para que MP sepa que hubo un fallo y reintente más tarde
+    return new NextResponse("Error interno del servidor", { status: 500 });
   }
 }

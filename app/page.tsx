@@ -1,27 +1,36 @@
 import { prisma } from '@/lib/prisma';
-import ImageCarousel from '@/app/components/ImageCarousel'; 
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
 import { SignInButton, UserButton, SignedIn, SignedOut } from '@clerk/nextjs'; 
-import DeleteButton from '@/app/components/DeleteButton';
 import SearchBar from '@/app/components/SearchBar'; 
+import PropertyCard from '@/app/components/PropertyCard'; 
 
 export const dynamic = "force-dynamic";
 
 export default async function Home({
   searchParams,
 }: {
-  searchParams?: Promise<{ query?: string }>;
+  // 1. Le avisamos a TypeScript que esperamos los dos parámetros de búsqueda
+  searchParams?: Promise<{ query?: string; guests?: string }>;
 }) {
   
-  // 🟢 Leemos la búsqueda de la URL
+  // 2. Leemos la búsqueda de la URL
   const params = await searchParams;
   const query = params?.query || "";
+  
+  // 3. Capturamos los huéspedes y los pasamos a número
+  const guestsParam = params?.guests || "0";
+  const guestsCount = parseInt(guestsParam, 10);
 
-  // 🟢 Filtramos la base de datos
+  // 4. Filtramos la base de datos
   const properties = await prisma.properties.findMany({
     where: {
       is_active: true,
+      
+      // Filtro de huéspedes: mayor o igual a lo buscado
+      max_guests: guestsCount > 0 ? { gte: guestsCount } : undefined,
+      
+      // Filtro de texto: busca en título, ciudad o barrio
       OR: query
         ? [
             { title: { contains: query, mode: "insensitive" } },
@@ -33,15 +42,15 @@ export default async function Home({
     orderBy: { created_at: 'desc' },
   });
 
-  // 1. Obtenemos el ID de Clerk
+  // Obtenemos el ID de Clerk
   const { userId: clerkId } = await auth();
   
-  // 2. Buscamos tu ID real en la base de datos (Súper optimizado)
+  // Buscamos tu ID real en la base de datos para saber si sos el dueño de alguna propiedad
   let dbUserId = null;
   if (clerkId) {
     const dbUser = await prisma.users.findUnique({
       where: { clerkId: clerkId },
-      select: { id: true } // Solo traemos el ID para ser súper rápidos
+      select: { id: true } 
     });
     dbUserId = dbUser?.id;
   }
@@ -88,7 +97,7 @@ export default async function Home({
                 </Link>
 
                 <div className="border-l pl-3 ml-1 border-gray-200">
-                  <UserButton afterSignOutUrl="/"/>
+                  <UserButton />
                 </div>
             </SignedIn>
 
@@ -105,15 +114,15 @@ export default async function Home({
       </nav>
 
       {/* --- CONTENIDO --- */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
         
         {/* SECCIÓN HERO + BUSCADOR */}
         <div className="mb-10 text-center md:text-left md:flex md:items-end md:justify-between gap-4">
           <div className="mb-4 md:mb-0">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Explora alojamientos únicos</h1>
             <p className="text-gray-500">
-              {query 
-                ? `Resultados para: "${query}"` 
+              {query || guestsCount > 0
+                ? `Resultados para: ${query ? `"${query}"` : "Cualquier destino"}${guestsCount > 0 ? ` • ${guestsCount} o más personas` : ""}` 
                 : "Encuentra el lugar perfecto para tu próxima escapada."}
             </p>
           </div>
@@ -130,57 +139,38 @@ export default async function Home({
               // Verificamos si es el dueño
               const isOwner = dbUserId && prop.owner_id === dbUserId;
               
-              // 🟢 BLINDAJE 1: Normalizamos las imágenes por las dudas
+              // Normalizamos las imágenes
               const imagesList = Array.isArray(prop.images) ? (prop.images as string[]) : [];
 
               return (
-                <div key={prop.id} className="group bg-white rounded-xl overflow-hidden border border-gray-100 hover:shadow-xl transition-all duration-300 flex flex-col">
-                  
-                  <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden">
-                    <div className="absolute inset-0 group-hover:scale-105 transition-transform duration-500">
-                        <ImageCarousel images={imagesList} title={prop.title} fit="cover" />
-                    </div>
-                    {isOwner && (
-                        <span className="absolute top-3 right-3 bg-white/90 backdrop-blur text-xs font-bold px-2 py-1 rounded-full shadow-sm border border-gray-200 z-10">
-                          👑 Tu Propiedad
-                        </span>
-                    )}
-                  </div>
+                <div key={prop.id} className="relative group">
+                  <PropertyCard
+                    id={prop.slug || prop.id} 
+                    title={prop.title}
+                    location={`${prop.city || ''} ${prop.neighborhood ? `, ${prop.neighborhood}` : ''}`}
+                    pricePerNight={Number(prop.price_per_night)} 
+                    maxGuests={prop.max_guests} 
+                    bedrooms={prop.bedrooms ?? undefined}
+                    images={imagesList}
+                  />
 
-                  <div className="p-4 flex flex-col flex-grow">
-                    <div className="flex justify-between items-start mb-1">
-                      <h2 className="font-bold text-gray-900 line-clamp-1 text-lg group-hover:text-rose-600 transition-colors">
-                        {prop.title}
-                      </h2>
+                  {/* 👑 Badge de Dueño Flotante */}
+                  {isOwner && (
+                    <div className="absolute top-3 left-3 z-20">
+                      <span className="bg-white/90 backdrop-blur text-xs font-bold px-2.5 py-1.5 rounded-md shadow-md border border-gray-200">
+                        👑 Tu Propiedad
+                      </span>
                     </div>
-                    
-                    <p className="text-gray-500 text-sm line-clamp-2 mb-4">
-                      {prop.description || "Alojamiento sin descripción."}
-                    </p>
-                    
-                    <div className="mt-auto pt-3 border-t border-gray-50 flex items-center justify-between">
-                        <div>
-                            <span className="text-lg font-bold text-gray-900">${prop.price_per_night.toString()}</span>
-                            <span className="text-gray-400 text-sm font-normal"> / noche</span>
-                        </div>
+                  )}
 
-                        <div className="flex items-center gap-2">
-                          {/* 🟢 BLINDAJE 2: Si por error no tiene slug, usa el ID */}
-                          <Link href={`/propiedad/${prop.slug || prop.id}`} className="text-sm font-semibold text-gray-900 hover:underline">
-                            Ver
-                          </Link>
-
-                          {isOwner && (
-                            <div className="flex items-center gap-1 pl-2 border-l ml-2">
-                               <Link href={`/propiedades/editar/${prop.id}`} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition">✏️</Link>
-                               <div className="scale-90">
-                                 <DeleteButton propertyId={prop.id} />
-                               </div>
-                            </div>
-                          )}
-                        </div>
+                  {/* ✏️ Opciones de edición (Flotantes al hacer hover si es el dueño) */}
+                  {isOwner && (
+                    <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur rounded-md shadow-md border border-gray-200 p-1 flex items-center gap-1">
+                       <Link href={`/propiedades/editar/${prop.id}`} className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition">
+                         ✏️
+                       </Link>
                     </div>
-                  </div>
+                  )}
                 </div>
               );
             })}
@@ -189,14 +179,14 @@ export default async function Home({
           <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-100">
             <div className="text-6xl mb-4">🔍</div>
             <h3 className="text-xl font-bold text-gray-800">
-              {query ? `No encontramos nada con "${query}"` : "Aún no hay propiedades"}
+              {query || guestsCount > 0 ? "No encontramos propiedades con esos filtros" : "Aún no hay propiedades"}
             </h3>
             <p className="text-gray-500 mb-6">
-              {query ? "Intenta con otra palabra clave." : "Sé el primero en publicar tu espacio."}
+              {query || guestsCount > 0 ? "Intenta buscando otra ciudad o cambiando la cantidad de huéspedes." : "Sé el primero en publicar tu espacio."}
             </p>
             
             <div className="flex justify-center gap-4">
-                {query && (
+                {(query || guestsCount > 0) && (
                     <Link href="/" className="text-gray-600 font-medium hover:underline px-4 py-2 border rounded-lg">
                         Borrar filtros
                     </Link>
