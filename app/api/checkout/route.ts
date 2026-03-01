@@ -12,8 +12,13 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // 2. Definimos las URLs base (ngrok para desarrollo local)
-    // Nos aseguramos de que appUrl sea solo el dominio base
+    // 🔥 NUEVOS LOGS DE DEBUGGING 🔥
+    // Esto nos dirá exactamente qué está enviando el frontend y por qué falla el Number()
+    console.log("🔍 Datos crudos recibidos del frontend:", body);
+    console.log("💵 Valor de body.total recibido:", body.total);
+    console.log("🤔 Tipo de dato de body.total:", typeof body.total);
+
+    // 2. Definimos las URLs base
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nonpursuant-cattily-frida.ngrok-free.dev";
     const webhookUrl = process.env.MP_WEBHOOK_URL || `${appUrl}/api/webhooks/mercadopago`;
 
@@ -27,17 +32,17 @@ export async function POST(request: Request) {
             id: "reserva-001", // A futuro, esto podría ser dinámico
             title: body.propiedad || "Reserva de Alojamiento",
             quantity: 1,
+            // Mantenemos el fallback temporal de 10000 para que no crashee,
+            // pero los logs de arriba revelarán por qué está fallando la conversión.
             unit_price: Number(body.total) || 10000, 
             currency_id: "ARS",
           },
         ],
-        // 🔥 ACÁ LE PASAMOS EL ID DE LA RESERVA A MERCADO PAGO 🔥
-        // Validamos que exista en el body para evitar errores en tiempo de ejecución
+        // ACÁ LE PASAMOS EL ID DE LA RESERVA A MERCADO PAGO
         external_reference: body.reservaId ? String(body.reservaId) : "ID_NO_PROPORCIONADO", 
         
         // URLs a las que Mercado Pago redirigirá al usuario tras el pago
         back_urls: {
-          // 🔥 Le pegamos tus parámetros a la URL de éxito para que tu frontend los pueda leer
           success: `${appUrl}/reserva-exitosa?propiedad=${encodeURIComponent(body.propiedad || '')}&checkin=${encodeURIComponent(body.checkin || '')}&checkout=${encodeURIComponent(body.checkout || '')}&total=${body.total || ''}`, 
           failure: `${appUrl}/failure`,
           pending: `${appUrl}/pending`,
