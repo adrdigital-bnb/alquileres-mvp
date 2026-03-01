@@ -7,7 +7,7 @@ import { Suspense } from 'react';
 function ResumenViaje() {
   const searchParams = useSearchParams();
   
-  // Leemos los datos de la URL que ya estás mandando perfecto
+  // Leemos los datos de la URL que Mercado Pago nos devuelve
   const propiedad = searchParams.get('propiedad') || 'Tu alojamiento';
   const checkin = searchParams.get('checkin') || '-';
   const checkout = searchParams.get('checkout') || '-';
@@ -55,8 +55,8 @@ export default function ReservaExitosaPage() {
         <h1 className="text-2xl font-bold text-gray-900 mb-2">¡Reserva Confirmada!</h1>
         <p className="text-gray-500 text-sm mb-6">Tu estadía ya está registrada en nuestro sistema.</p>
 
-        {/* Acá cargamos el componente que lee la URL */}
-        <Suspense fallback={<div className="mb-6 h-32 w-full bg-gray-100 animate-pulse rounded-lg"></div>}>
+        {/* Componente aislado para no romper el Server Side Rendering de la página */}
+        <Suspense fallback={<div className="mb-6 h-40 w-full bg-gray-100 animate-pulse rounded-lg"></div>}>
           <ResumenViaje />
         </Suspense>
 
