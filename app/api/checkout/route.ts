@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 
-// 1. Inicializamos el cliente con tu Access Token
+// 1. Inicializamos el cliente con tu Access Token (Debe ser el de Producción: APP_USR-...)
 const client = new MercadoPagoConfig({ 
   accessToken: process.env.MP_ACCESS_TOKEN as string 
 });
@@ -12,14 +12,15 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // 🔥 NUEVOS LOGS DE DEBUGGING 🔥
+    // 🔥 LOGS DE DEBUGGING 🔥
     // Esto nos dirá exactamente qué está enviando el frontend y por qué falla el Number()
     console.log("🔍 Datos crudos recibidos del frontend:", body);
     console.log("💵 Valor de body.total recibido:", body.total);
     console.log("🤔 Tipo de dato de body.total:", typeof body.total);
 
     // 2. Definimos las URLs base
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://nonpursuant-cattily-frida.ngrok-free.dev";
+    // Cambié el fallback de ngrok por tu dominio real de Vercel por seguridad
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://alquileres-mvp-xi.vercel.app";
     const webhookUrl = process.env.MP_WEBHOOK_URL || `${appUrl}/api/webhooks/mercadopago`;
 
     const preference = new Preference(client);
@@ -32,9 +33,8 @@ export async function POST(request: Request) {
             id: "reserva-001", // A futuro, esto podría ser dinámico
             title: body.propiedad || "Reserva de Alojamiento",
             quantity: 1,
-            // Mantenemos el fallback temporal de 10000 para que no crashee,
-            // pero los logs de arriba revelarán por qué está fallando la conversión.
-            unit_price: Number(body.total) || 10000, 
+            // 🔥 CORRECCIÓN: Fallback bajado a $100 ARS para cuidar tu bolsillo en las pruebas
+            unit_price: Number(body.total) || 100, 
             currency_id: "ARS",
           },
         ],
@@ -53,8 +53,9 @@ export async function POST(request: Request) {
     });
 
     // 4. Devolvemos la URL para redirigir al usuario
+    // 🔥 CORRECCIÓN: Devolvemos únicamente init_point para forzar el flujo de pago real
     return NextResponse.json({ 
-      url: result.sandbox_init_point || result.init_point 
+      url: result.init_point 
     });
     
   } catch (error) {
