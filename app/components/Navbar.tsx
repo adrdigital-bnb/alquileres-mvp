@@ -36,6 +36,14 @@ export default function Navbar() {
             >
               Mis Huéspedes
             </Link>
+            
+            {/* NUEVO: ENLACE AL DASHBOARD DE INGRESOS */}
+            <Link 
+              href="/mis-ingresos" 
+              className="text-sm font-bold text-gray-900 hover:text-blue-600 transition hidden md:block"
+            >
+              Mis Ingresos
+            </Link>
           </SignedIn>
           
           {/* BOTÓN PUBLICAR */}
