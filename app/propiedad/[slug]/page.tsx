@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/prisma";
-// 🟢 1. IMPORTAMOS LA NUEVA GALERÍA Y SACAMOS EL VIEJO CAROUSEL
-import ImageGallery from "@/app/components/ImageGallery"; // (Asegurate de que esta ruta coincida con donde guardaste el componente)
+import ImageGallery from "@/app/components/ImageGallery"; 
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
@@ -94,7 +93,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
             )}
         </div>
 
-        {/* 🟢 2. REEMPLAZAMOS EL DIV DEL CAROUSEL POR LA NUEVA GALERÍA ESTILO AIRBNB */}
+        {/* GALERÍA ESTILO AIRBNB */}
         <div className="p-4 md:p-6 pb-0">
            <ImageGallery images={imagesList} />
         </div>
@@ -158,6 +157,7 @@ export default async function PropertyDetailPage({ params }: PageProps) {
                       marginHeight={0}
                       marginWidth={0}
                       title="Mapa de la propiedad"
+                      // 🔥 Corrección del string template para que el mapa cargue bien
                       src={`https://maps.google.com/maps?q=${encodeURIComponent(mapAddress)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                       className="absolute inset-0"
                     ></iframe>

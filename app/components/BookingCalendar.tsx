@@ -31,7 +31,7 @@ export default function BookingCalendar({ propertyId, pricePerNight, propertyTit
     
   const totalPrice = totalNights > 0 ? totalNights * pricePerNight : 0;
 
-const handleSelect = (range: DateRange | undefined) => {
+  const handleSelect = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
       // Lógica mejorada para detectar si el rango seleccionado "atraviesa" fechas deshabilitadas
       const isOverlapping = disabledDates.some(disabled => {
@@ -65,26 +65,36 @@ const handleSelect = (range: DateRange | undefined) => {
       const bookingId = typeof result === 'string' ? result : (result?.bookingId || result?.id);
 
       if (bookingId) {
-        // 2. Preparamos los datos del viaje
-        const checkinFormat = format(dateRange.from, "dd MMM yyyy", { locale: es });
-        const checkoutFormat = format(dateRange.to, "dd MMM yyyy", { locale: es });
+        // 2. Preparamos los datos del viaje (Formato técnico seguro para la base de datos)
+        const checkinApiFormat = format(dateRange.from, "yyyy-MM-dd");
+        const checkoutApiFormat = format(dateRange.to, "yyyy-MM-dd");
         
-        // 3. Llamamos a nuestra API de MercadoPago Y LE MANDAMOS EL ID
+        // 3. Llamamos a nuestra API de MercadoPago
         const respuesta = await fetch('/api/checkout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
+            propertyId: propertyId, // 👈 EL FIX: UUID de la propiedad para la validación de PostgreSQL
             propiedad: propertyTitle,
             total: totalPrice,
-            checkin: checkinFormat,
-            checkout: checkoutFormat,
-            reservaId: bookingId // 🔥 ACÁ VIAJA EL ID DE LA RESERVA AL CHECKOUT 🔥
+            checkin: checkinApiFormat, // 👈 Fechas en formato YYYY-MM-DD
+            checkout: checkoutApiFormat,
+            reservaId: bookingId 
           }),
         });
 
         const data = await respuesta.json();
+
+        // 🛡️ EL ESCUDO: Capturamos la validación de fechas solapadas
+        if (respuesta.status === 409) {
+            throw new Error(data.error || "Las fechas seleccionadas acaban de ser reservadas. Por favor, actualizá el calendario.");
+        }
+
+        if (!respuesta.ok) {
+            throw new Error(data.error || "Hubo un error al conectar con la pasarela de pagos.");
+        }
 
         // 4. Si todo sale bien, redirigimos al turista a la pantalla de pago
         if (data.url) {
