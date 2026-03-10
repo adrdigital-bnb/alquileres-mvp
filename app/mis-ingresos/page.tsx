@@ -3,29 +3,46 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-export const dynamic = "force-dynamic"; // Asegura que siempre traiga datos frescos de la BD
+export const dynamic = "force-dynamic";
 
 export default async function DashboardIngresos() {
-  // 1. Autenticación: Verificamos quién es el usuario actual
+  // 1. Obtenemos el ID de Clerk (Ej: user_2abc...)
   const { userId } = await auth();
 
   if (!userId) {
     redirect("/sign-in");
   }
 
-  // 2. LA LÓGICA CORE: Consulta a PostgreSQL con Prisma
-  // Traemos las propiedades del usuario junto con sus reservas confirmadas
+  // 🔥 EL PUENTE: Buscamos tu usuario interno en PostgreSQL usando el ID de Clerk
+  const usuarioDb = await prisma.users.findUnique({
+    where: { clerkId: userId },
+    select: { id: true } // Solo traemos el UUID interno
+  });
+
+  // Si por algún motivo el usuario no se sincronizó en tu BD, mostramos 0
+  if (!usuarioDb) {
+    return (
+      <main className="min-h-screen bg-gray-50 py-10 px-4 flex justify-center items-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">No se encontró tu usuario</h1>
+          <p className="text-gray-500">Parece que tu cuenta no está registrada en la base de datos.</p>
+        </div>
+      </main>
+    );
+  }
+
+  // 2. Consulta a PostgreSQL usando tu UUID interno
   const propiedadesConReservas = await prisma.properties.findMany({
     where: {
-      owner_id: userId,
+      owner_id: usuarioDb.id, // 👈 AHORA SÍ: Comparamos UUID contra UUID
     },
     include: {
       bookings: {
         where: {
-          status: "CONFIRMED", // Solo contamos lo que ya se pagó
+          status: "CONFIRMED", 
         },
         orderBy: {
-          check_in_date: "desc", // Las más recientes primero
+          check_in_date: "desc", 
         },
       },
     },
@@ -35,16 +52,13 @@ export default async function DashboardIngresos() {
   let ingresosTotalesGlobales = 0;
   let reservasTotalesGlobales = 0;
 
-  // Mapeamos los datos para armar un resumen por propiedad
   const resumenPropiedades = propiedadesConReservas.map((propiedad) => {
     const reservasConfirmadas = propiedad.bookings.length;
     
-    // Prisma devuelve Decimal, lo pasamos a Number para sumar
     const ingresosPropiedad = propiedad.bookings.reduce((acumulador, reserva) => {
       return acumulador + Number(reserva.total_price);
     }, 0);
 
-    // Sumamos a los totales globales
     ingresosTotalesGlobales += ingresosPropiedad;
     reservasTotalesGlobales += reservasConfirmadas;
 
@@ -57,7 +71,6 @@ export default async function DashboardIngresos() {
     };
   });
 
-  // Formateador de moneda argentina
   const formatearDinero = (monto: number) => {
     return new Intl.NumberFormat("es-AR", {
       style: "currency",
@@ -117,7 +130,7 @@ export default async function DashboardIngresos() {
                 {resumenPropiedades.length === 0 ? (
                   <tr>
                     <td colSpan={3} className="px-6 py-8 text-center text-gray-400">
-                      Todavía no tenés propiedades registradas o reservas confirmadas.
+                      Todavía no tenés reservas confirmadas o propiedades registradas.
                     </td>
                   </tr>
                 ) : (
