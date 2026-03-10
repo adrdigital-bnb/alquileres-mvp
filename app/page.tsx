@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { auth } from '@clerk/nextjs/server';
-import { SignInButton, UserButton, SignedIn, SignedOut } from '@clerk/nextjs'; 
+import { SignedIn, SignedOut } from '@clerk/nextjs'; 
 import SearchBar from '@/app/components/SearchBar'; 
 import PropertyCard from '@/app/components/PropertyCard'; 
 
@@ -58,60 +58,7 @@ export default async function Home({
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
       
-      {/* --- CABECERA --- */}
-      <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/80 backdrop-blur-md">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="bg-rose-500 text-white p-1.5 rounded-lg transform group-hover:rotate-12 transition-transform">
-              🏡
-            </div>
-            <span className="text-xl font-bold tracking-tight text-gray-800 hidden md:block">
-              Alquileres MVP
-            </span>
-          </Link>
-
-          {/* MENÚ DERECHO */}
-          <div className="flex items-center gap-3">
-            
-            <SignedIn>
-                <Link 
-                  href="/mis-propiedades" 
-                  className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 font-medium px-4 py-2 rounded-full transition-all text-sm flex items-center gap-2"
-                >
-                  💼 <span className="hidden md:inline">Mis Propiedades</span>
-                </Link>
-
-                <Link 
-                  href="/admin/crear" 
-                  className="hidden md:flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white px-4 py-2 rounded-full font-medium transition-all shadow-sm hover:shadow-md text-sm"
-                >
-                  <span>+</span> Publicar
-                </Link>
-                
-                <Link 
-                  href="/admin/crear" 
-                  className="md:hidden bg-rose-500 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-sm"
-                >
-                  +
-                </Link>
-
-                <div className="border-l pl-3 ml-1 border-gray-200">
-                  <UserButton />
-                </div>
-            </SignedIn>
-
-            <SignedOut>
-              <SignInButton mode="modal">
-                <button className="text-gray-600 hover:text-gray-900 font-medium text-sm px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors">
-                  Iniciar Sesión
-                </button>
-              </SignInButton>
-            </SignedOut>
-
-          </div>
-        </div>
-      </nav>
+      {/* La cabecera (<nav>) fue eliminada porque ahora la gestiona globalmente app/layout.tsx */}
 
       {/* --- CONTENIDO --- */}
       <main className="container mx-auto px-4 py-8 max-w-7xl">
@@ -188,7 +135,7 @@ export default async function Home({
             <div className="flex justify-center gap-4">
                 {(query || guestsCount > 0) && (
                     <Link href="/" className="text-gray-600 font-medium hover:underline px-4 py-2 border rounded-lg">
-                        Borrar filtros
+                       Borrar filtros
                     </Link>
                 )}
                 <SignedIn>

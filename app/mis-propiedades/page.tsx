@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import DeleteButton from "@/app/components/DeleteButton";
 import Image from "next/image"; 
-// 🟢 IMPORTAMOS DATE-FNS PARA FORMATEAR LAS FECHAS
 import { format } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +23,6 @@ export default async function MisPropiedadesPage() {
     redirect("/");
   }
 
-  // 🟢 AHORA LE PEDIMOS A PRISMA QUE TAMBIÉN TRAIGA LAS RESERVAS
   const properties = await prisma.properties.findMany({
     where: {
       owner_id: dbUser.id, 
@@ -34,37 +32,15 @@ export default async function MisPropiedadesPage() {
     },
     include: {
       bookings: {
-        where: { status: { not: "CANCELLED" } }, // Solo traemos las que no estén canceladas
-        orderBy: { check_in_date: "asc" } // Ordenadas por fecha más próxima
+        where: { status: { not: "CANCELLED" } }, 
+        orderBy: { check_in_date: "asc" } 
       }
     }
   });
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      
-      {/* 🟢 NUEVA BARRA DE NAVEGACIÓN DEL PANEL DE CONTROL */}
-      <nav className="bg-white border-b px-6 py-4 flex justify-between items-center">
-        <Link href="/" className="font-bold text-xl text-rose-500 hover:text-rose-600 transition">
-          🏡 Volver al Inicio
-        </Link>
-        
-        <div className="hidden md:flex items-center gap-6">
-          <Link href="/mis-viajes" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition">
-            Mis Viajes
-          </Link>
-          <Link href="/mis-huespedes" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition">
-            Mis Huéspedes
-          </Link>
-          {/* Marcamos "Mis Propiedades" como la página activa */}
-          <Link href="/mis-propiedades" className="text-sm font-bold text-rose-600 border-b-2 border-rose-600 pb-1">
-            Mis Propiedades
-          </Link>
-          <Link href="/mis-ingresos" className="text-sm font-medium text-gray-500 hover:text-green-600 transition">
-            💰 Mis Ingresos
-          </Link>
-        </div>
-      </nav>
+      {/* 🟢 ELIMINAMOS LA BARRA LOCAL PORQUE AHORA USAMOS LA GLOBAL DEL LAYOUT */}
 
       <main className="container mx-auto py-10 px-4">
         <div className="flex justify-between items-center mb-8">
