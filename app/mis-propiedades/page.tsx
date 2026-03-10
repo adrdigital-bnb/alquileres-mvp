@@ -42,11 +42,28 @@ export default async function MisPropiedadesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
-      <nav className="bg-white border-b px-4 py-4 flex justify-between items-center">
-        <Link href="/" className="font-bold text-xl text-rose-500">
+      
+      {/* 🟢 NUEVA BARRA DE NAVEGACIÓN DEL PANEL DE CONTROL */}
+      <nav className="bg-white border-b px-6 py-4 flex justify-between items-center">
+        <Link href="/" className="font-bold text-xl text-rose-500 hover:text-rose-600 transition">
           🏡 Volver al Inicio
         </Link>
-        <h1 className="text-gray-700 font-semibold">Panel de Control</h1>
+        
+        <div className="hidden md:flex items-center gap-6">
+          <Link href="/mis-viajes" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition">
+            Mis Viajes
+          </Link>
+          <Link href="/mis-huespedes" className="text-sm font-medium text-gray-500 hover:text-gray-900 transition">
+            Mis Huéspedes
+          </Link>
+          {/* Marcamos "Mis Propiedades" como la página activa */}
+          <Link href="/mis-propiedades" className="text-sm font-bold text-rose-600 border-b-2 border-rose-600 pb-1">
+            Mis Propiedades
+          </Link>
+          <Link href="/mis-ingresos" className="text-sm font-medium text-gray-500 hover:text-green-600 transition">
+            💰 Mis Ingresos
+          </Link>
+        </div>
       </nav>
 
       <main className="container mx-auto py-10 px-4">
@@ -79,7 +96,7 @@ export default async function MisPropiedadesPage() {
                     <th className="px-6 py-4">Propiedad</th>
                     <th className="px-6 py-4">Precio</th>
                     <th className="px-6 py-4">Estado</th>
-                    <th className="px-6 py-4">Fechas Reservadas</th> {/* 🟢 NUEVA COLUMNA */}
+                    <th className="px-6 py-4">Fechas Reservadas</th>
                     <th className="px-6 py-4 text-right">Acciones</th>
                   </tr>
                 </thead>
@@ -118,7 +135,6 @@ export default async function MisPropiedadesPage() {
                         </span>
                       </td>
 
-                      {/* 🟢 NUEVA COLUMNA CON LAS FECHAS OCUPADAS */}
                       <td className="px-6 py-4">
                         {property.bookings.length === 0 ? (
                           <span className="text-gray-400 text-xs italic">Sin reservas aún</span>

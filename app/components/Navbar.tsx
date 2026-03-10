@@ -22,14 +22,17 @@ export default function Navbar() {
             Explorar
           </Link>
 
-          {/* 🟢 ENLACES PRIVADOS: Solo se ven si está logueado */}
+          {/* 🟢 ENLACES PRIVADOS: Solo se ven si el usuario está logueado */}
           <SignedIn>
+            {/* Vistas del Huésped */}
             <Link 
               href="/mis-viajes" 
               className="text-sm font-medium text-gray-600 hover:text-black transition hidden md:block"
             >
               Mis Viajes
             </Link>
+
+            {/* Vistas del Propietario */}
             <Link 
               href="/mis-huespedes" 
               className="text-sm font-medium text-gray-600 hover:text-black transition hidden md:block"
@@ -37,7 +40,13 @@ export default function Navbar() {
               Mis Huéspedes
             </Link>
             
-            {/* NUEVO: ENLACE AL DASHBOARD DE INGRESOS */}
+            <Link 
+              href="/mis-propiedades" 
+              className="text-sm font-medium text-gray-600 hover:text-black transition hidden md:block"
+            >
+              Mis Propiedades
+            </Link>
+
             <Link 
               href="/mis-ingresos" 
               className="text-sm font-bold text-gray-900 hover:text-blue-600 transition hidden md:block"
@@ -71,7 +80,6 @@ export default function Navbar() {
           </SignedOut>
 
         </div>
-
       </div>
     </nav>
   )
